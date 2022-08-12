@@ -56,8 +56,8 @@ class TestCUBA(unittest.TestCase):
         net = slayer.block.cuba.Dense(neuron_param, in_features, out_features)
         x = (torch.rand([1, in_features, time_steps]) > 0.5).float()
         y = net(x)
-
-        # export slayer network
+        
+         # export slayer network
         net.export_hdf5(h5py.File(tempdir + '/cuba_dense.net',
                                   'w').create_group('layer/0'))
 
@@ -125,3 +125,23 @@ class TestCUBA(unittest.TestCase):
             print(output[0, 0, 0])
 
         self.assertTrue(np.abs(y[0].data.numpy() - output).sum() == 0)
+
+    def test_updatable_dense_block_on_pass_update(self):
+        # TODO Add Doc
+        # TODO Add ejecution of net over data
+        # TODO Add export net to hdf5
+        in_features = 10
+        out_features = 5
+
+        def update():
+            pass
+        
+
+        net = slayer.block.cuba.UpdatableDense(
+            neuron_param,
+            in_features, 
+            out_features, 
+            update_rule = update
+            )
+        
+        assert net.synapse.update_rule is not None
