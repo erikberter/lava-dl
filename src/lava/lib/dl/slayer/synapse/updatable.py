@@ -17,6 +17,8 @@ class GenericUpdatableLayer(torch.nn.Module):
         flag indicating weather weight norm in enabled or not.
     complex : bool
         False. Indicates synapse is not complex.
+    _update_rule : method
+        method to apply after each time step to update weights.
     """
     def __init__(self):
         super(GenericUpdatableLayer, self).__init__()
@@ -66,6 +68,98 @@ class GenericUpdatableLayer(torch.nn.Module):
         self._pre_hook_fx = fx
 
     @property
+    def update_rule(self):
+        # TODO Doc function
+        return self._update_rule
+    
+    @update_rule.setter
+    def update_rule(self, update_rule):
+        # TODO Doc function
+        self._update_rule = update_rule
+
+    @property
     def shape(self):
         """Shape of the synapse"""
         return self.weight.shape
+
+
+
+class Dense(torch.nn.Linear, GenericUpdatableLayer):
+    """Dense updatable synapse layer.
+
+    Parameters
+    ----------
+    in_neurons : int
+        number of input neurons.
+    out_neurons : int
+        number of output neurons.
+    update_rule : method
+        function to apply after each time step to update weigths. 
+        Defaults to None.
+    weight_scale : int
+        weight initialization scaling factor. Defaults to 1.
+    weight_norm : bool
+        flag to enable/disable weight normalization. Defaults to False.
+    pre_hook_fx : optional
+        a function reference or a lambda function. If the function is provided,
+        it will be applied to it's weight before the forward operation of the
+        synapse. Typically the function is a quantization mechanism of the
+        synapse. Defaults to None.
+
+    Attributes
+    ----------
+    in_channels
+    out_channels
+    _update_rule
+    weight
+    weight_norm_enabled : bool
+        flag indicating weather weight norm in enabled or not.
+    complex : bool
+        False. Indicates synapse is not complex.
+    """
+    def __init__(
+        self,
+        in_neurons,
+        out_neurons,
+        update_rule = None,
+        weight_scale=1,
+        weight_norm=False,
+        pre_hook_fx=None
+    ):
+        """ """
+        
+        super(Dense, self).__init__(
+            in_neurons, out_neurons, bias=False
+        )
+
+        self.update_rule = update_rule
+        
+        if weight_scale != 1:
+            self.weight = torch.nn.Parameter(weight_scale * self.weight)
+
+        self._pre_hook_fx = pre_hook_fx
+
+        if weight_norm is True:
+            self.enable_weight_norm()
+
+    def forward(self, input):
+        """Applies the synapse to the input.
+
+        Parameters
+        ----------
+        input : torch tensor
+            Input tensor. Typically spikes. Input is expected to be of shape
+            NCT.
+
+        Returns
+        -------
+        torch tensor
+            dendrite accumulation / weighted spikes.
+
+        """
+        raise NotImplementedError("This function is not yet implemented")
+    
+    def apply_update_rule(self, pre, post):
+        # TODO Add Doc
+        raise NotImplementedError("This function is not yet implemented")
+

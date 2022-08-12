@@ -447,6 +447,9 @@ class AbstractDense(torch.nn.Module):
         number of input neurons.
     out_neurons : int
         number of output neurons.
+    update_rule : function, optional
+        function to apply after each time step to update weigths. 
+        Defaults to None.
     weight_scale : int, optional
         weight initialization scaling. Defaults to 1.
     weight_norm : bool, optional
@@ -467,9 +470,18 @@ class AbstractDense(torch.nn.Module):
         event rate is returned. Defaults to False.
     """
     def __init__(
-        self, neuron_params, in_neurons, out_neurons,
-        weight_scale=1, weight_norm=False, pre_hook_fx=None,
-        delay=False, delay_shift=True, mask=None, count_log=False,
+        self,
+        neuron_params,
+        in_neurons,
+        out_neurons,
+        update_rule = None,
+        weight_scale=1,
+        weight_norm=False,
+        pre_hook_fx=None,
+        delay=False,
+        delay_shift=True,
+        mask=None,
+        count_log=False,
     ):
         super(AbstractDense, self).__init__()
         # neuron parameters
@@ -482,6 +494,11 @@ class AbstractDense(torch.nn.Module):
             'weight_norm': weight_norm,
             'pre_hook_fx': pre_hook_fx,
         }
+
+        if update_rule is not None:
+            self.synapse_params['update_rule'] = update_rule
+        
+        self.updatable = update_rule is not None
 
         self.count_log = count_log
 
@@ -500,8 +517,9 @@ class AbstractDense(torch.nn.Module):
         self.delay_shift = delay_shift
 
     def forward(self, x):
-        """Forward computation method. The input can be either of ``NCT`` or
-        ``NCHWT`` format.
+        """Forward computation method. The input format can be either of ``NCT`` or
+        ``NCHWT`` if no update_rule is present. Otherwise, the input 
+        must be of format ``NCT``.
         """
         if self.mask is not None:
             if self.synapse.complex is True:
@@ -509,13 +527,33 @@ class AbstractDense(torch.nn.Module):
                 self.synapse.imag.weight.data *= self.mask
             else:
                 self.synapse.weight.data *= self.mask
+        
+        if not self.updatable:
+            z = self.synapse(x)
+            x = self.neuron(z)
+            if self.delay_shift is True:
+                x = delay(x, 1)
+            if self.delay is not None:
+                x = self.delay(x)
+        else:            
+            # TODO Implement update rule dynamics
 
-        z = self.synapse(x)
-        x = self.neuron(z)
-        if self.delay_shift is True:
-            x = delay(x, 1)
-        if self.delay is not None:
-            x = self.delay(x)
+            """
+            x = torch.zeros((N,out_neurons,T))
+
+
+            for t in T:
+                z_t = self.synapse(input[t])
+                x_{t+1} = self.neuron(z_t) # Must have persistent state
+
+                #! No delay will be implemented
+
+                self.synapse.apply_update_rule(input{t}, x_{t+1})
+            """
+
+            pass
+
+
 
         if self.count_log is True:
             return x, torch.mean(x > 0)
