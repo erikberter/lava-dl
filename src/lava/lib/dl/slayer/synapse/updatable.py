@@ -160,10 +160,11 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         N, C = input.shape[0], input.shape[1]
 
         out = super().forward(input.reshape((N, C)))
-        return torch.unsqueeze(input, dim=-1)
+        return torch.unsqueeze(out, dim=-1)
         
 
     def apply_update_rule(self, pre, post):
         # TODO Add Doc
-        raise NotImplementedError("This function is not yet implemented")
+        
+        self.weight = self._update_rule(self.weight, pre, post)
 

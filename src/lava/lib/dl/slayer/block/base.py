@@ -538,23 +538,16 @@ class AbstractDense(torch.nn.Module):
         else:            
             # TODO Implement update rule dynamics
 
-            # TODO Change the one by to time_step based
-            z = self.synapse(x)
-            x = self.neuron(z)
-            """
-            x = torch.zeros((N,out_neurons,T))
+            res = []
+            for t in range(x.shape[-1]):
+                z = self.synapse(x[:,:,t])
+                res += [self.neuron(z)]
 
+                #! No delay implemented
 
-            for t in T:
-                z_t = self.synapse(input[t])
-                x_{t+1} = self.neuron(z_t) # Must have persistent state
+                self.synapse.apply_update_rule(x[:,:,t], res[-1])
 
-                #! No delay will be implemented
-
-                self.synapse.apply_update_rule(input{t}, x_{t+1})
-            """
-
-
+            x = torch.cat(res, dim=2) 
 
         if self.count_log is True:
             return x, torch.mean(x > 0)
