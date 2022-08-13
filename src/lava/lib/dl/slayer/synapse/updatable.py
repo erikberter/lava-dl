@@ -149,7 +149,7 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         ----------
         input : torch tensor
             Input tensor. Typically spikes. Input is expected to be of shape
-            NCT.
+            NC1, since only one time step is taken.
 
         Returns
         -------
@@ -157,8 +157,12 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
             dendrite accumulation / weighted spikes.
 
         """
-        raise NotImplementedError("This function is not yet implemented")
-    
+        N, C = input.shape[0], input.shape[1]
+
+        out = super().forward(input.reshape((N, C)))
+        return torch.unsqueeze(input, dim=-1)
+        
+
     def apply_update_rule(self, pre, post):
         # TODO Add Doc
         raise NotImplementedError("This function is not yet implemented")

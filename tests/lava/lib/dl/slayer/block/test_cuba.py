@@ -42,6 +42,10 @@ neuron_param = {'threshold': 0.5,
                 'current_decay': 0.5,
                 'voltage_decay': 0.5}
 
+updatable_neuron_param = {'threshold': 0.5,
+                'current_decay': 0.5,
+                'voltage_decay': 0.5,
+                'persistent_state' : True}
 
 class TestCUBA(unittest.TestCase):
     """Test CUBA blocks"""
@@ -126,7 +130,7 @@ class TestCUBA(unittest.TestCase):
 
         self.assertTrue(np.abs(y[0].data.numpy() - output).sum() == 0)
 
-    def test_updatable_dense_block_on_pass_update(self):
+    def test_updatable_dense_block_contains_update_rule(self):
         # TODO Add Doc
         # TODO Add ejecution of net over data
         # TODO Add export net to hdf5
@@ -138,10 +142,44 @@ class TestCUBA(unittest.TestCase):
         
 
         net = slayer.block.cuba.UpdatableDense(
-            neuron_param,
+            updatable_neuron_param,
             in_features, 
             out_features, 
             update_rule = update
             )
         
         assert net.synapse.update_rule is not None
+
+    def test_updatable_dense_block_cuba_persists_state(self):
+        # TODO Add Doc
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        time_steps = 1
+
+        def update():
+            pass
+
+        torch.cuda.manual_seed_all(1234)
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features, 
+            out_features, 
+            update_rule = update
+            )
+
+
+        x = (torch.ones([1, in_features, time_steps]) > 0.5).float()
+
+        f_res = net(x).clone().detach()
+
+        all_equal = False
+
+        # WHEN
+        for i in range(10):
+            res = net(x).clone().detach()
+            all_equal = all_equal and torch.equal(res, f_res)
+        
+        # THEN
+        assert not all_equal

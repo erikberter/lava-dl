@@ -538,6 +538,9 @@ class AbstractDense(torch.nn.Module):
         else:            
             # TODO Implement update rule dynamics
 
+            # TODO Change the one by to time_step based
+            z = self.synapse(x)
+            x = self.neuron(z)
             """
             x = torch.zeros((N,out_neurons,T))
 
@@ -550,8 +553,6 @@ class AbstractDense(torch.nn.Module):
 
                 self.synapse.apply_update_rule(input{t}, x_{t+1})
             """
-
-            pass
 
 
 
