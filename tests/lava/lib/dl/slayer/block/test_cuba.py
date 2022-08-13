@@ -131,14 +131,13 @@ class TestCUBA(unittest.TestCase):
         self.assertTrue(np.abs(y[0].data.numpy() - output).sum() == 0)
 
     def test_updatable_dense_block_contains_update_rule(self):
-        # TODO Add Doc
-        # TODO Add ejecution of net over data
-        # TODO Add export net to hdf5
+        """Test updatable dense contains update rule."""
+
         in_features = 10
         out_features = 5
 
-        def update():
-            pass
+        def update(weight, pre, post):
+            return weight
         
 
         net = slayer.block.cuba.UpdatableDense(
@@ -150,18 +149,17 @@ class TestCUBA(unittest.TestCase):
         
         assert net.synapse.update_rule is not None
 
-    def test_updatable_dense_block_cuba_persists_state(self):
-        # TODO Add Doc
+    def test_updatable_dense_block_persists_state(self):
+        """Test updatable dense mantains persists state on neurons."""
 
         # GIVEN
         in_features = 10
         out_features = 5
         time_steps = 1
 
-        def update():
-            pass
+        def update(weight, pre, post):
+            return weight
 
-        torch.cuda.manual_seed_all(1234)
         net = slayer.block.cuba.UpdatableDense(
             updatable_neuron_param,
             in_features, 
@@ -183,3 +181,34 @@ class TestCUBA(unittest.TestCase):
         
         # THEN
         assert not all_equal
+
+    def test_updatable_dense_block_returns_correct_shape(self):
+        """Test updatable dense returns correct shape on execution."""
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        batch_size = 3
+        time_steps = 7
+
+        def update(weight, pre, post):
+            return weight
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features, 
+            out_features, 
+            update_rule = update
+            )
+
+
+        x = (torch.ones([batch_size, in_features, time_steps]) > 0.5).float()
+
+
+        # WHEN
+        res = net(x).clone().detach()
+        
+        # THEN
+        assert res.shape == (3,5,7)
+
+    # TODO Test updatable dense export to h5py.
