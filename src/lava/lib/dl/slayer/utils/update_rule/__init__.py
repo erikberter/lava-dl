@@ -6,5 +6,5 @@ from .base import GenericUpdateRule
 from .hebian import HebbianDense
 
 __all__ = [
-    'GenericUpdateRule'
+    'GenericUpdateRule', 'HebbianDense'
 ]
