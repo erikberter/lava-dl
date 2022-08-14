@@ -2,10 +2,11 @@ import torch
 
 from .base import GenericUpdateRule
 
+
 class HebbianDense(GenericUpdateRule):
     """
     Applies a hebbian weight update.
-    
+
     Pre and Post should be in shape NA1 and NB1 respectively,
     where A and B are the features of pre and post.
 
@@ -29,7 +30,7 @@ class HebbianDense(GenericUpdateRule):
             pre : torch.Tensor,
             post : torch.Tensor) -> None:
 
-        weight *= 1-self.mu
+        weight *= 1 - self.mu
         weight += self.mu * torch.bmm(post, pre.permute(0, 2, 1))
 
         return weight

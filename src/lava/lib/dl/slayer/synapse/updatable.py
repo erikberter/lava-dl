@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from ..utils.update_rule.base import GenericUpdateRule
 
+
 class GenericUpdatableLayer(torch.nn.Module):
     """Abstract updatable synapse layer class.
 
@@ -83,11 +84,12 @@ class GenericUpdatableLayer(torch.nn.Module):
         """Shape of the synapse"""
         return self.weight.shape
 
+
 class Dense(torch.nn.Linear, GenericUpdatableLayer):
     """Dense updatable synapse layer.
 
-    Update rules can be either a subclass of 
-    GenericUpdateRule(<lava.lib.dl.slayer.utils.update_rule.base.GenericUpdateRule>) 
+    Update rules can be either a subclass of
+    GenericUpdateRule(<lava.lib.dl.slayer.utils.update_rule.base.GenericUpdateRule>)
     or a custom function.
 
     Parameters
@@ -97,7 +99,7 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
     out_neurons : int
         number of output neurons.
     update_rule : method or GenericUpdateRule subclass
-        Util to update weigths after each time step. 
+        Util to update weigths after each time step.
         Defaults to None.
     weight_scale : int
         weight initialization scaling factor. Defaults to 1.
@@ -114,19 +116,18 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
     in_channels
     out_channels
     _update_rule : method or GenericUpdateRule subclass
-        None. 
+        None.
     weight
     weight_norm_enabled : bool
         flag indicating weather weight norm in enabled or not.
     complex : bool
         False. Indicates synapse is not complex.
     """
-
     def __init__(
         self,
         in_neurons,
         out_neurons,
-        update_rule = None,
+        update_rule=None,
         weight_scale=1,
         weight_norm=False,
         pre_hook_fx=None

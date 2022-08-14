@@ -472,7 +472,7 @@ class AbstractDense(torch.nn.Module):
     Attributes
     ----------
     updatable : bool
-        flag to indicate whether weights are updatable with update rules. 
+        flag to indicate whether weights are updatable with update rules.
         If true, a update_rule execution will go on a loop over the time
         dimension applying a update_rule after each time step.
     """
@@ -481,7 +481,7 @@ class AbstractDense(torch.nn.Module):
         neuron_params,
         in_neurons,
         out_neurons,
-        update_rule = None,
+        update_rule=None,
         weight_scale=1,
         weight_norm=False,
         pre_hook_fx=None,
@@ -524,7 +524,7 @@ class AbstractDense(torch.nn.Module):
         self.delay_shift = delay_shift
 
     def forward(self, x, **kwargs):
-        """Forward computation method. The input format can be either of 
+        """Forward computation method. The input format can be either of
         ``NCT`` or ``NCHWT`` if no update_rule is present. Otherwise, the
         input must be of format ``NCT``.
         """
@@ -542,23 +542,23 @@ class AbstractDense(torch.nn.Module):
                 x = delay(x, 1)
             if self.delay is not None:
                 x = self.delay(x)
-        else:     
+        else:
             # TODO Implement update rule dynamics
 
             res = []
             for t in range(x.shape[-1]):
-                z = self.synapse(x[:,:,t])
+                z = self.synapse(x[:, :, t])
                 res += [self.neuron(z)]
 
-                #! No delay implemented
+                # No delay implemented
 
                 update_elements = {
-                    'pre'   : x[:,:,t],
+                    'pre'   : x[:, :, t],
                     'post'  : res[-1],
                 }
 
                 # To bypass lava implementation, send info through kwargs
-                update_elements.update(kwargs)  
+                update_elements.update(kwargs)
 
                 self.synapse.apply_update_rule(**update_elements)
 

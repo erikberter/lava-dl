@@ -1,6 +1,7 @@
 import torch
 from abc import ABC
 
+
 class GenericUpdateRule(ABC):
     """Abstract Update Rule class. Must be parent class of all update rules.
         Contains the dynamics which all update rules share.
@@ -9,9 +10,7 @@ class GenericUpdateRule(ABC):
         ----------
         weight_decay : float
             rate of decrease in weights
-
     """
-
     def __init__(self, weight_decay : float = 1.0) -> None:
 
         self.weight_decay = weight_decay

@@ -48,6 +48,7 @@ updatable_neuron_param = {
     'voltage_decay': 0.5,
     'persistent_state' : True}
 
+
 class TestCUBA(unittest.TestCase):
     """Test CUBA blocks"""
 
@@ -62,7 +63,7 @@ class TestCUBA(unittest.TestCase):
         x = (torch.rand([1, in_features, time_steps]) > 0.5).float()
         y = net(x)
         
-         # export slayer network
+        # export slayer network
         net.export_hdf5(h5py.File(tempdir + '/cuba_dense.net',
                                   'w').create_group('layer/0'))
 
@@ -139,14 +140,14 @@ class TestCUBA(unittest.TestCase):
 
         def update(weight, pre, post):
             return weight
-        
+
         net = slayer.block.cuba.UpdatableDense(
             updatable_neuron_param,
-            in_features, 
-            out_features, 
+            in_features,
+            out_features,
             update_rule=update
         )
-        
+
         assert net.synapse.update_rule is not None
 
     def test_updatable_dense_block_persists_state(self):
@@ -177,7 +178,7 @@ class TestCUBA(unittest.TestCase):
         for i in range(10):
             res = net(x).clone().detach()
             all_equal = all_equal and torch.equal(res, f_res)
-        
+
         # THEN
         assert not all_equal
 
@@ -204,7 +205,7 @@ class TestCUBA(unittest.TestCase):
 
         # WHEN
         res = net(x).clone().detach()
-        
+
         # THEN
         assert res.shape == (3, 5, 7)
 
@@ -225,7 +226,7 @@ class TestCUBA(unittest.TestCase):
             def update(self, weight, **kwargs):
                 return weight
 
-        update_rule = CustomUpdateRule() 
+        update_rule = CustomUpdateRule()
 
         net = slayer.block.cuba.UpdatableDense(
             updatable_neuron_param,
@@ -239,10 +240,9 @@ class TestCUBA(unittest.TestCase):
         # WHEN
         net(x).clone().detach()
         assert True
-        
-    
+
     def test_updatable_dense_block_with_update_rule_passes_extra_data(self):
-        #Test updatable dense returns correct shape on execution.
+        """ Test updatable dense returns correct shape on execution. """
 
         # GIVEN
         in_features = 10
@@ -260,7 +260,7 @@ class TestCUBA(unittest.TestCase):
                     raise ValueError("No reward in parameters.")
                 return weight
 
-        update_rule = CustomUpdateRule() 
+        update_rule = CustomUpdateRule()
 
         net = slayer.block.cuba.UpdatableDense(
             updatable_neuron_param,
@@ -273,7 +273,7 @@ class TestCUBA(unittest.TestCase):
 
         # WHEN
         try:
-            net(x, reward = [0, -1, 2]).clone().detach()
+            net(x, reward=[0, -1, 2]).clone().detach()
         except ValueError:
             self.fail("Value error thrown.")
 

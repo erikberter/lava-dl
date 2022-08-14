@@ -96,6 +96,7 @@ class Dense(AbstractCuba, base.AbstractDense):
 
 Dense.__doc__ = _doc_from_base(base.AbstractDense)
 
+
 class UpdatableDense(AbstractCuba, base.AbstractDense):
     def __init__(self, *args, **kwargs):
         super(UpdatableDense, self).__init__(*args, **kwargs)
@@ -106,6 +107,7 @@ class UpdatableDense(AbstractCuba, base.AbstractDense):
 
 
 UpdatableDense.__doc__ = _doc_from_base(base.AbstractDense)
+
 
 class Conv(AbstractCuba, base.AbstractConv):
     def __init__(self, *args, **kwargs):
