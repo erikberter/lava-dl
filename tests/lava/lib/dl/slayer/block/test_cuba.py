@@ -211,4 +211,78 @@ class TestCUBA(unittest.TestCase):
         # THEN
         assert res.shape == (3,5,7)
 
+    def test_updatable_dense_block_with_class_based_update_rule(self):
+        """Test updatable dense works with GenericUpdateRule subclasss."""
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        batch_size = 3
+        time_steps = 7
+
+        from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+        class CustomUpdateRule(GenericUpdateRule):
+            def __init__(self):
+                super(CustomUpdateRule, self).__init__()
+
+            def update(self, weight, **kwargs):
+                return weight
+
+        update_rule = CustomUpdateRule() 
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features, 
+            out_features, 
+            update_rule = update_rule
+            )
+
+
+        x = (torch.ones([batch_size, in_features, time_steps]) > 0.5).float()
+
+
+        # WHEN
+        net(x).clone().detach()
+        assert True
+        
+    
+    def test_updatable_dense_block_with_update_rule_passes_extra_data(self):
+        #Test updatable dense returns correct shape on execution.
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        batch_size = 3
+        time_steps = 1
+
+        from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+        class CustomUpdateRule(GenericUpdateRule):
+            def __init__(self):
+                super(CustomUpdateRule, self).__init__()
+
+            def update(self, weight, **kwargs):
+                if 'reward' not in kwargs:
+                    raise ValueError("No reward in parameters.")
+                return weight
+
+        update_rule = CustomUpdateRule() 
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features, 
+            out_features, 
+            update_rule = update_rule
+            )
+
+
+        x = (torch.ones([batch_size, in_features, time_steps]) > 0.5).float()
+
+
+        # WHEN
+        try:
+            net(x, reward = [0, -1, 2]).clone().detach()
+        except ValueError:
+            self.fail("Value error thrown.")
+
+
     # TODO Test updatable dense export to h5py.
