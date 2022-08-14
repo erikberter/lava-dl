@@ -472,9 +472,9 @@ class AbstractDense(torch.nn.Module):
     Attributes
     ----------
     updatable : bool
-        flag to indicate whether weights are updatable with update rules. If true,
-        a update_rule execution will go on a loop over the time dimension applying
-        a update_rule after each time step.
+        flag to indicate whether weights are updatable with update rules. 
+        If true, a update_rule execution will go on a loop over the time
+        dimension applying a update_rule after each time step.
     """
     def __init__(
         self,
@@ -504,7 +504,7 @@ class AbstractDense(torch.nn.Module):
 
         if update_rule is not None:
             self.synapse_params['update_rule'] = update_rule
-        
+
         self.updatable = update_rule is not None
 
         self.count_log = count_log
@@ -524,9 +524,9 @@ class AbstractDense(torch.nn.Module):
         self.delay_shift = delay_shift
 
     def forward(self, x, **kwargs):
-        """Forward computation method. The input format can be either of ``NCT`` or
-        ``NCHWT`` if no update_rule is present. Otherwise, the input 
-        must be of format ``NCT``.
+        """Forward computation method. The input format can be either of 
+        ``NCT`` or ``NCHWT`` if no update_rule is present. Otherwise, the
+        input must be of format ``NCT``.
         """
         if self.mask is not None:
             if self.synapse.complex is True:
@@ -534,7 +534,7 @@ class AbstractDense(torch.nn.Module):
                 self.synapse.imag.weight.data *= self.mask
             else:
                 self.synapse.weight.data *= self.mask
-        
+
         if not self.updatable:
             z = self.synapse(x)
             x = self.neuron(z)
@@ -542,7 +542,7 @@ class AbstractDense(torch.nn.Module):
                 x = delay(x, 1)
             if self.delay is not None:
                 x = self.delay(x)
-        else:            
+        else:     
             # TODO Implement update rule dynamics
 
             res = []
@@ -562,7 +562,7 @@ class AbstractDense(torch.nn.Module):
 
                 self.synapse.apply_update_rule(**update_elements)
 
-            x = torch.cat(res, dim=2) 
+            x = torch.cat(res, dim=2)
 
         if self.count_log is True:
             return x, torch.mean(x > 0)

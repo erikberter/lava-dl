@@ -2,7 +2,6 @@ import torch
 
 from .base import GenericUpdateRule
 
-
 class HebbianDense(GenericUpdateRule):
     """
     Applies a hebbian weight update.
@@ -25,13 +24,12 @@ class HebbianDense(GenericUpdateRule):
         self.mu = mu
         
     def update(
-            self, 
+            self,
             weight : torch.Tensor,
             pre : torch.Tensor,
-            post : torch.Tensor
-        ) -> None:
+            post : torch.Tensor) -> None:
 
-
-        weight = (1-self.mu) * weight + self.mu * torch.bmm(post, pre.permute(0, 2, 1))
+        weight *= 1-self.mu
+        weight += self.mu * torch.bmm(post, pre.permute(0, 2, 1))
 
         return weight

@@ -83,8 +83,6 @@ class GenericUpdatableLayer(torch.nn.Module):
         """Shape of the synapse"""
         return self.weight.shape
 
-
-
 class Dense(torch.nn.Linear, GenericUpdatableLayer):
     """Dense updatable synapse layer.
 
@@ -123,6 +121,7 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
     complex : bool
         False. Indicates synapse is not complex.
     """
+
     def __init__(
         self,
         in_neurons,
@@ -133,13 +132,13 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         pre_hook_fx=None
     ):
         """ """
-        
+
         super(Dense, self).__init__(
             in_neurons, out_neurons, bias=False
         )
 
         self.update_rule = update_rule
-        
+
         if weight_scale != 1:
             self.weight = torch.nn.Parameter(weight_scale * self.weight)
 
@@ -167,13 +166,11 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
 
         out = super().forward(input.reshape((N, C)))
         return torch.unsqueeze(out, dim=-1)
-        
 
     def apply_update_rule(self, **kwargs) -> None:
         """Applies the update rule on the weight."""
-        
+
         if isinstance(self._update_rule, GenericUpdateRule):
             self.weight = self._update_rule.update(self.weight, **kwargs)
         else:
             self.weight = self._update_rule(self.weight, **kwargs)
-
