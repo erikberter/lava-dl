@@ -17,7 +17,7 @@ class GenericUpdateRule(ABC):
 
     def update(self, weight : torch.Tensor, **kwargs) -> torch.Tensor:
         """Updates the input weights.
-        
+
         Parameters
         ----------
         weight : torch.Tensor
@@ -25,7 +25,7 @@ class GenericUpdateRule(ABC):
 
         Returns
         -------
-        torch.Tensor. 
+        torch.Tensor.
             Updated weights.
         """
 

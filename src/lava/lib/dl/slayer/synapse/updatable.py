@@ -73,7 +73,7 @@ class GenericUpdatableLayer(torch.nn.Module):
     def update_rule(self):
         # TODO Doc function
         return self._update_rule
-    
+
     @update_rule.setter
     def update_rule(self, update_rule):
         # TODO Doc function

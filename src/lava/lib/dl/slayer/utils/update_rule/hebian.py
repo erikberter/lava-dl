@@ -23,7 +23,7 @@ class HebbianDense(GenericUpdateRule):
     def __init__(self, mu : float = 0.05, **kwargs) -> None:
         super().__init__(**kwargs)
         self.mu = mu
-        
+
     def update(
             self,
             weight : torch.Tensor,

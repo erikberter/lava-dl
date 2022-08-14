@@ -46,7 +46,7 @@ updatable_neuron_param = {
     'threshold': 0.5,
     'current_decay': 0.5,
     'voltage_decay': 0.5,
-    'persistent_state' : True}
+    'persistent_state': True}
 
 
 class TestCUBA(unittest.TestCase):
@@ -219,6 +219,7 @@ class TestCUBA(unittest.TestCase):
         time_steps = 7
 
         from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+        
         class CustomUpdateRule(GenericUpdateRule):
             def __init__(self):
                 super(CustomUpdateRule, self).__init__()
@@ -251,6 +252,7 @@ class TestCUBA(unittest.TestCase):
         time_steps = 1
 
         from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+        
         class CustomUpdateRule(GenericUpdateRule):
             def __init__(self):
                 super(CustomUpdateRule, self).__init__()
