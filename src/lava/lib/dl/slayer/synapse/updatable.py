@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from ..utils.update_rule.base import GenericUpdateRule
 
 class GenericUpdatableLayer(torch.nn.Module):
     """Abstract updatable synapse layer class.
@@ -87,14 +88,18 @@ class GenericUpdatableLayer(torch.nn.Module):
 class Dense(torch.nn.Linear, GenericUpdatableLayer):
     """Dense updatable synapse layer.
 
+    Update rules can be either a subclass of 
+    GenericUpdateRule(<lava.lib.dl.slayer.utils.update_rule.base.GenericUpdateRule>) 
+    or a custom function.
+
     Parameters
     ----------
     in_neurons : int
         number of input neurons.
     out_neurons : int
         number of output neurons.
-    update_rule : method
-        function to apply after each time step to update weigths. 
+    update_rule : method or GenericUpdateRule subclass
+        Util to update weigths after each time step. 
         Defaults to None.
     weight_scale : int
         weight initialization scaling factor. Defaults to 1.
@@ -110,7 +115,8 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
     ----------
     in_channels
     out_channels
-    _update_rule
+    _update_rule : method or GenericUpdateRule subclass
+        None. 
     weight
     weight_norm_enabled : bool
         flag indicating weather weight norm in enabled or not.
@@ -163,8 +169,11 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         return torch.unsqueeze(out, dim=-1)
         
 
-    def apply_update_rule(self, pre, post):
-        # TODO Add Doc
+    def apply_update_rule(self, **kwargs) -> None:
+        """Applies the update rule on the weight."""
         
-        self.weight = self._update_rule(self.weight, pre, post)
+        if isinstance(self._update_rule, GenericUpdateRule):
+            self.weight = self._update_rule.update(self.weight, **kwargs)
+        else:
+            self.weight = self._update_rule(self.weight, **kwargs)
 

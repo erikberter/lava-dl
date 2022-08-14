@@ -447,8 +447,8 @@ class AbstractDense(torch.nn.Module):
         number of input neurons.
     out_neurons : int
         number of output neurons.
-    update_rule : function, optional
-        function to apply after each time step to update weigths. 
+    update_rule : function or GenericUpdateRule, optional
+        Util to update weigths after each time step.
         Defaults to None.
     weight_scale : int, optional
         weight initialization scaling. Defaults to 1.
@@ -468,6 +468,13 @@ class AbstractDense(torch.nn.Module):
     count_log : bool, optional
         flag to return event count log. If True, an additional value of average
         event rate is returned. Defaults to False.
+
+    Attributes
+    ----------
+    updatable : bool
+        flag to indicate whether weights are updatable with update rules. If true,
+        a update_rule execution will go on a loop over the time dimension applying
+        a update_rule after each time step.
     """
     def __init__(
         self,
@@ -516,7 +523,7 @@ class AbstractDense(torch.nn.Module):
         self.delay = None
         self.delay_shift = delay_shift
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         """Forward computation method. The input format can be either of ``NCT`` or
         ``NCHWT`` if no update_rule is present. Otherwise, the input 
         must be of format ``NCT``.
@@ -545,7 +552,15 @@ class AbstractDense(torch.nn.Module):
 
                 #! No delay implemented
 
-                self.synapse.apply_update_rule(x[:,:,t], res[-1])
+                update_elements = {
+                    'pre'   : x[:,:,t],
+                    'post'  : res[-1],
+                }
+
+                # To bypass lava implementation, send info through kwargs
+                update_elements.update(kwargs)  
+
+                self.synapse.apply_update_rule(**update_elements)
 
             x = torch.cat(res, dim=2) 
 
