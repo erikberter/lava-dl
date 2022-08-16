@@ -69,7 +69,7 @@ class LinearSTDPDense(GenericUpdateRule):
             **kwargs) -> None:
         """Updates the weights based on the stdp dynamics"""
 
-        super().update(weight)
+        weight = super().update(weight)
 
         # Update synaptic trace
         self.pre_trace *= self.tau

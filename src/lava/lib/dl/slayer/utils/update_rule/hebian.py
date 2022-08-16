@@ -20,16 +20,17 @@ class HebbianDense(GenericUpdateRule):
     mu : float
         plasticity of the hebbian update rule.
     """
-    def __init__(self, mu : float = 0.05, **kwargs) -> None:
+    def __init__(self, mu: float = 0.05, **kwargs) -> None:
         super().__init__(**kwargs)
         self.mu = mu
 
     def update(
             self,
-            weight : torch.Tensor,
-            pre : torch.Tensor,
-            post : torch.Tensor) -> None:
+            weight: torch.Tensor,
+            pre: torch.Tensor,
+            post: torch.Tensor) -> None:
 
+        weight = super().update(weight)
         weight *= 1 - self.mu
         weight += self.mu * torch.bmm(post, pre.permute(0, 2, 1))
 
