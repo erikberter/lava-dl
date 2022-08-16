@@ -1,9 +1,9 @@
 import torch
 
-from .base import GenericUpdateRule
+from .base import GenericUpdateRule, DenseSynapticTraceUpdateRule
 
 
-class LinearSTDPDense(GenericUpdateRule):
+class LinearSTDPDense(DenseSynapticTraceUpdateRule):
     """Applies a two-factor linear stdp update.
     This implies that A_{+,i,j} and A_{-,i,j} are both constant.
 
@@ -51,15 +51,16 @@ class LinearSTDPDense(GenericUpdateRule):
         A_minus : float
             Max change in STDP weight weakening.
         """
-        super(LinearSTDPDense, self).__init__(**kwargs)
-        self.tau = tau
-        self.beta = beta
+        super(LinearSTDPDense, self).__init__(
+            in_neurons=in_neurons,
+            out_neurons=out_neurons,
+            batch_size=batch_size,
+            tau=tau,
+            beta=beta,
+            **kwargs)
 
         self.A_plus = A_plus
         self.A_minus = A_minus
-
-        self.pre_trace = torch.zeros((batch_size, in_neurons))
-        self.post_trace = torch.zeros((batch_size, out_neurons))
 
     def update(
             self,
@@ -67,16 +68,9 @@ class LinearSTDPDense(GenericUpdateRule):
             pre : torch.Tensor,
             post : torch.Tensor,
             **kwargs) -> None:
-        """Updates the weights based on the stdp dynamics"""
+        """Updates the weights based on the stdp dynamics."""
 
-        weight = super().update(weight)
-
-        # Update synaptic trace
-        self.pre_trace *= self.tau
-        self.pre_trace += self.beta * pre
-
-        self.post_trace *= self.tau
-        self.post_trace += self.beta * post
+        weight = super().update(weight, pre, post)
 
         # Apply Linear STDP dynamics
         A_plus_mat = torch.bmm(
