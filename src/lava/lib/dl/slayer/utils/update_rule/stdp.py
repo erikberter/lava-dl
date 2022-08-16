@@ -76,7 +76,7 @@ class LinearSTDPDense(GenericUpdateRule):
         self.pre_trace += self.beta * pre
 
         self.post_trace *= self.tau
-        self.post_trace -= self.beta * post
+        self.post_trace += self.beta * post
 
         # Apply Linear STDP dynamics
         A_plus_mat = torch.bmm(
@@ -89,6 +89,9 @@ class LinearSTDPDense(GenericUpdateRule):
             pre.unsqueeze(dim=1)
         ).sum(dim=0)
 
-        weight += self.A_plus * A_plus_mat + self.A_minus * A_minus_mat
+        weight += self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
+
+        # Clamp to zero
+        weight = torch.maximum(torch.zeros_like(weight), weight)
 
         return weight
