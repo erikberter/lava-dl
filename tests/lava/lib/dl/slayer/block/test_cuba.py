@@ -62,7 +62,7 @@ class TestCUBA(unittest.TestCase):
         net = slayer.block.cuba.Dense(neuron_param, in_features, out_features)
         x = (torch.rand([1, in_features, time_steps]) > 0.5).float()
         y = net(x)
-        
+
         # export slayer network
         net.export_hdf5(h5py.File(tempdir + '/cuba_dense.net',
                                   'w').create_group('layer/0'))
@@ -219,7 +219,7 @@ class TestCUBA(unittest.TestCase):
         time_steps = 7
 
         from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
-        
+
         class CustomUpdateRule(GenericUpdateRule):
             def __init__(self):
                 super(CustomUpdateRule, self).__init__()
@@ -252,7 +252,7 @@ class TestCUBA(unittest.TestCase):
         time_steps = 1
 
         from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
-        
+
         class CustomUpdateRule(GenericUpdateRule):
             def __init__(self):
                 super(CustomUpdateRule, self).__init__()
