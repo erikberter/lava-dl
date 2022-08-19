@@ -548,13 +548,22 @@ class AbstractDense(torch.nn.Module):
             res = []
             for t in range(x.shape[-1]):
                 z = self.synapse(x[:, :, t])
-                res += [self.neuron(z)]
+                out = self.neuron(z)
 
-                # No delay implemented
+                # Apply a fake 1 delay.
+                # If not used, STDP will not work since
+                # if a pre spike causes a post spike, the null dt will make
+                # A_+ s_i - A_- s_j = 0
+                if not hasattr(self, 'temp_pos'):
+                    self.temp_pos = torch.zeros_like(out)
 
+                res += [self.temp_pos.clone().detach()]
+                self.temp_pos = out.clone().detach()
+
+                # Update the weights
                 update_elements = {
                     'pre'   : x[:, :, t],
-                    'post'  : res[-1],
+                    'post'  : res[-1].squeeze(2),  # [N,C,T(1)] -> [N,C]
                 }
 
                 # To bypass lava implementation, send info through kwargs
