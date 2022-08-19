@@ -172,6 +172,10 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         """Applies the update rule on the weight."""
 
         if isinstance(self._update_rule, GenericUpdateRule):
-            self.weight = self._update_rule.update(self.weight, **kwargs)
+            self.weight = torch.nn.Parameter(
+                self._update_rule.update(self.weight, **kwargs),
+                requires_grad=False)
         else:
-            self.weight = self._update_rule(self.weight, **kwargs)
+            self.weight = torch.nn.Parameter(
+                self._update_rule(self.weight, **kwargs),
+                requires_grad=False)
