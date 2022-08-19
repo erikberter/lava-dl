@@ -72,3 +72,18 @@ class TestLinearSTDPDense(unittest.TestCase):
             weight = update_rule.update(weight, pre[:, :, t], post[:, :, t])
 
         assert torch.equal(weight, torch.FloatTensor([[0.9264]]))
+
+    def test_linear_stdp_works_on_batch(self):
+        """Test if the STDP update rule works on batch."""
+        update_rule = LinearSTDPDense(1, 1, 1)
+
+        pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0]], [[1, 0, 0, 1, 0, 0]]])
+        post = torch.FloatTensor([[[0, 0, 1, 0, 0, 0]], [[1, 0, 0, 1, 0, 0]]])
+
+        weight = torch.Tensor([[1]])
+
+        try:
+            for t in range(pre.shape[-1]):
+                weight = update_rule.update(weight, pre[:, :, t], post[:, :, t])
+        except Exception:
+            self.fail("STDP update rule does not work on batch.")
