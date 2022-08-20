@@ -26,7 +26,7 @@ class RateEncoder(GenericEncoder):
 
     def encode(
             self,
-            input : torch.Tensor,
+            data : torch.Tensor,
             num_steps : int = 20):
         """Encodes the data on a rate encoding paradigm. Input should
         be in the range [0, 1].
@@ -35,21 +35,21 @@ class RateEncoder(GenericEncoder):
 
         Parameters
         ----------
-        input : torch.Tensor
+        data : torch.Tensor
             Input tensor clamped on the range [0, 1].
         num_steps : int
             Number of output time steps.
         """
-        if torch.min(input) < 0.0 or torch.max(input) > 1.0:
-            raise Exception("Input dada should be between 0 and 1.")
+        if torch.min(data) < 0.0 or torch.max(data) > 1.0:
+            raise ValueError("Input dada should be between 0 and 1.")
 
         if num_steps < 1:
-            raise Exception("num_steps should be greater than 1.")
+            raise ValueError("num_steps should be greater than 1.")
 
         if num_steps > 1:
-            input = torch.stack(num_steps * [input], dim=-1)
+            data = torch.stack(num_steps * [data], dim=-1)
 
-        return torch.bernoulli(input)
+        return torch.bernoulli(data)
 
 
 class TTFEncoder(GenericEncoder):
@@ -57,7 +57,7 @@ class TTFEncoder(GenericEncoder):
 
     def encode(
             self,
-            input : torch.Tensor,
+            data : torch.Tensor,
             num_steps : int = 20):
         """Encodes the data on a time-to-first encoding paradigm. Input should
         be in the range [0, 1].
@@ -66,22 +66,22 @@ class TTFEncoder(GenericEncoder):
 
         Parameters
         ----------
-        input : torch.Tensor
+        data : torch.Tensor
             Input tensor clamped on the range [0, 1].
         num_steps : int
             Number of output time steps.
         """
-        if torch.min(input) < 0.0 or torch.max(input) > 1.0:
-            raise Exception("Input dada should be between 0 and 1.")
+        if torch.min(data) < 0.0 or torch.max(data) > 1.0:
+            raise ValueError("Input dada should be between 0 and 1.")
 
         if num_steps < 1:
-            raise Exception("num_steps should be greater than 1.")
+            raise ValueError("num_steps should be greater than 1.")
 
         if num_steps > 1:
-            input = torch.stack(num_steps * [input], dim=-1)
+            data = torch.stack(num_steps * [data], dim=-1)
 
         # Get rate based encoding
-        x = torch.bernoulli(input)
+        x = torch.bernoulli(data)
 
         # Swap time dimension to first place
         x = x.transpose(0, len(x.shape))
