@@ -87,7 +87,7 @@ class TestTTFEncoder(unittest.TestCase):
         encoder = TTFEncoder()
         res = encoder(torch.FloatTensor([[1, 0.6]]), 3)
 
-        assert torch.equal(
+        assert torch.allclose(
             res,
             torch.FloatTensor([[[1, 0, 0], [0, 0, 1]]])
         )
