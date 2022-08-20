@@ -81,7 +81,7 @@ https://www.garrickorchard.com/datasets/n-mnist
                 )
                 print('Attempting download (This will take a while) ...')
                 # TODO Improve this line
-                #os.system(f'wget {source} -P {self.path}/ -q --show-progress')
+                # os.system(f'wget {source} -P {self.path}/ -q --show-progress')
                 print('Extracting files ...')
                 with zipfile.ZipFile(data_path + '.zip') as zip_file:
                     for member in zip_file.namelist():
@@ -89,8 +89,9 @@ https://www.garrickorchard.com/datasets/n-mnist
                 print('Download complete.')
         else:
             if len(glob.glob(f'{data_path}/*')) != 10:
-                raise Exception("Dataset does not exist." \
-                    "Please install it from" \
+                raise Exception(
+                    "Dataset does not exist."
+                    "Please install it from"
                     "https://www.garrickorchard.com/datasets/n-mnist")
 
         self.samples = glob.glob(f'{data_path}/*/*.bin')
