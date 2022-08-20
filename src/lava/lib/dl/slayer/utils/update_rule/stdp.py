@@ -77,6 +77,9 @@ class LinearSTDPDense(DenseSynapticTraceUpdateRule):
         self.A_plus = A_plus
         self.A_minus = A_minus
 
+        self.W_max = W_max
+        self.W_min = W_min
+
         self.nu_zero = nu_zero
 
     def update(

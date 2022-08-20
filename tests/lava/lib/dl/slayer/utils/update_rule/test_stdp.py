@@ -62,7 +62,7 @@ class TestLinearSTDPDense(unittest.TestCase):
 
     def test_linear_stdp_dense_updates_correctly(self):
         """Test if the STDP dynamics are correctly implemented."""
-        update_rule = LinearSTDPDense(1, 1, 1)
+        update_rule = LinearSTDPDense(1, 1, 1, nu_zero=1)
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0]]])
         post = torch.FloatTensor([[[0, 0, 1, 0, 0, 0]]])
