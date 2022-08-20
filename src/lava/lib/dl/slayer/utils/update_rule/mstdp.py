@@ -6,7 +6,7 @@ from .base import DenseSynapticTraceUpdateRule
 
 class LinearMSTDPDense(DenseSynapticTraceUpdateRule):
     # TODO Change this doc
-    """Applies a two-factor linear weight dependent stdp update.
+    """Applies a linear reward modulated stdp update.
     This implies that A_{+,i,j} and A_{-,i,j} are both constant.
 
     Attributes
@@ -20,15 +20,15 @@ class LinearMSTDPDense(DenseSynapticTraceUpdateRule):
     A_minus : float
         Max change in STDP weight weakening.
     W_max : float
-        Max value for a weight
+        Max value for a weight.
     W_min : float
-        Min value for a weight
-    nu_zero : float
-        Learning rate
+        Min value for a weight.
     pre_trace : torch.Tensor
         Synaptic trace of input spikes.
     post_trace : torch.Tensor
         Synaptic trace of output spikes.
+    nu_zero : float
+        Learning rate.
     """
     def __init__(
             self,
@@ -48,11 +48,11 @@ class LinearMSTDPDense(DenseSynapticTraceUpdateRule):
         Parameters
         ----------
         in_neurons : int
-            Number of input neurons
+            Number of input neurons.
         out_neurons : int
-            Number of output neurons
+            Number of output neurons.
         batch_size : int
-            Size of the batch
+            Size of the batch.
         tau : float
             Rate of decay of the synaptic trace.
         beta : float
@@ -62,11 +62,11 @@ class LinearMSTDPDense(DenseSynapticTraceUpdateRule):
         A_minus : float
             Max change in STDP weight weakening.
         W_max : float
-            Max value for a weight
+            Max value for a weight.
         W_min : float
-            Min value for a weight
+            Min value for a weight.
         nu_zero : float
-            Learning rate
+            Learning rate.
         """
         super(LinearMSTDPDense, self).__init__(
             in_neurons=in_neurons,
@@ -98,35 +98,41 @@ class LinearMSTDPDense(DenseSynapticTraceUpdateRule):
         # Start weight change calculation
         weight = super().update(weight, pre, post)
 
+        # Get all the inhibitory neurons
+        inhib_mask = torch.where(weight < 0, -1, 1)
+        weight = torch.abs(weight)
+
+        rewards = torch.FloatTensor(kwargs['reward'])
+
         # Apply Linear STDP dynamics
-        A_plus_mat = torch.bmm(
+        A_plus_mat = (rewards.view((-1, 1, 1)) * torch.bmm(
             post.unsqueeze(dim=-1),
             torch.unsqueeze(self.pre_trace, dim=1)
-        ).sum(dim=0)
+        )).sum(dim=0)
 
-        A_minus_mat = torch.bmm(
+        A_minus_mat = (rewards.view((-1, 1, 1)) * torch.bmm(
             torch.unsqueeze(self.post_trace, dim=-1),
             pre.unsqueeze(dim=1)
-        ).sum(dim=0)
-
-        self.A_plus_save = self.A_plus * A_plus_mat
-        self.A_neg_save = self.A_minus * A_minus_mat
+        )).sum(dim=0)
 
         z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
 
-        w_change = self.nu_zero * z
-
-        weight += float(kwargs['reward']) * w_change
+        weight += self.nu_zero * z * inhib_mask
 
         # Clamp to bounds
         weight = torch.clamp(weight, self.W_min, self.W_max)
 
+        # Reapply inhib mask
+        weight *= inhib_mask
+
         return weight
 
 
+# TODO Make this class batchable
 class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
     # TODO Change this doc
-    """Applies a two-factor linear weight dependent stdp update.
+    """Applies a linear reward modulated stdp with elegibility
+    trace update.
     This implies that A_{+,i,j} and A_{-,i,j} are both constant.
 
     Attributes
@@ -140,21 +146,21 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
     A_minus : float
         Max change in STDP weight weakening.
     W_max : float
-        Max value for a weight
+        Max value for a weight.
     W_min : float
-        Min value for a weight
+        Min value for a weight.
     e_decay : float
-        Decay of the elasticity trace
+        Decay of the elasticity trace.
     e_alfa : float
-        Value added for each STDP step
+        Value added for each STDP step.
     e_trace : torch.Tensor
-        Elegibility trace
+        Elegibility trace.
     pre_trace : torch.Tensor
-        Synaptic trace of input spikes
+        Synaptic trace of input spikes.
     post_trace : torch.Tensor
-        Synaptic trace of output spikes
+        Synaptic trace of output spikes.
     nu_zero : float
-        Learning rate
+        Learning rate.
     """
     def __init__(
             self,
@@ -176,11 +182,11 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
         Parameters
         ----------
         in_neurons : int
-            Number of input neurons
+            Number of input neurons.
         out_neurons : int
-            Number of output neurons
+            Number of output neurons.
         batch_size : int
-            Size of the batch
+            Size of the batch.
         tau : float
             Rate of decay of the synaptic trace.
         beta : float
@@ -190,15 +196,15 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
         A_minus : float
             Max change in STDP weight weakening.
         W_max : float
-            Max value for a weight
+            Max value for a weight.
         W_min : float
-            Min value for a weight
+            Min value for a weight.
         e_decay : float
-            Decay of the elasticity trace
+            Decay of the elasticity trace.
         e_alfa : float
-            Value added for each STDP step
+            Value added for each STDP step.
         nu_zero : float
-            Learning rate
+            Learning rate.
         """
         super(LinearMSTDPETDense, self).__init__(
             in_neurons=in_neurons,
@@ -235,7 +241,12 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
         # Start weight change calculation
         weight = super().update(weight, pre, post)
 
+        # Get all the inhibitory neurons
+        inhib_mask = torch.where(weight < 0, -1, 1)
+        weight = torch.abs(weight)
+
         # Apply Linear STDP dynamics
+        # TODO Check the reduction function
         A_plus_mat = torch.bmm(
             post.unsqueeze(dim=-1),
             torch.unsqueeze(self.pre_trace, dim=1)
@@ -249,7 +260,7 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
         z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
 
         self.e_trace *= self.e_decay
-        self.e_trace += self.e_alfa * z
+        self.e_trace += self.e_alfa * z * inhib_mask
 
         w_change = self.nu_zero * self.e_trace
 
@@ -257,5 +268,8 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
 
         # Clamp to bounds
         weight = torch.clamp(weight, self.W_min, self.W_max)
+
+        # Reapply inhib mask
+        weight *= inhib_mask
 
         return weight

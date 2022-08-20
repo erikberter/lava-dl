@@ -148,6 +148,17 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         if weight_norm is True:
             self.enable_weight_norm()
 
+        self.weight = torch.nn.Parameter(
+            torch.abs(self.weight), requires_grad=False)
+
+        inhib_mask = torch.where(
+            torch.rand(*self.weight.shape) < 0.2, -1, 1)
+
+        self.weight = torch.nn.Parameter(
+            inhib_mask * self.weight,
+            requires_grad=False
+        )
+
     def forward(self, input):
         """Applies the synapse to the input.
 

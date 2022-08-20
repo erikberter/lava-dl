@@ -1,3 +1,4 @@
+
 """Leaky Integrator module"""
 
 import numpy as np
@@ -15,15 +16,16 @@ class LeakyIntegrator(torch.nn.Module):
             decay : float = 0.85,
             gamma : float = 0.6):
         """Initialation method for the Leaky Integrator."""
+        super(LeakyIntegrator, self).__init__()
         self.decay = decay
 
         self.gamma = gamma
 
-        self.state = torch.zeros((batch_size, input))
+        self.state = torch.zeros((batch_size, n_input))
 
     def forward(self, input : torch.Tensor) -> torch.Tensor:
         """Returns the updated leaky intergator state."""
         self.state *= self.decay
-        self.state += self.gamma * input
+        self.state += self.gamma * input.squeeze(dim=2)
 
         return self.state.clone().detach()
