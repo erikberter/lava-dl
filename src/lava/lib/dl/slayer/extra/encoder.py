@@ -31,12 +31,12 @@ class RateEncoder(GenericEncoder):
         """Encodes the data on a rate encoding paradigm. Input should
         be in the range [0, 1].
 
-        Expects data with a time a shape of [NCT], or, in gneeral, [N...T].
+        Expects data with a time a shape of [NCT], or, in general, [N...T].
 
         Parameters
         ----------
         input : torch.Tensor
-            Input tensor clamped on the range [0, 1]
+            Input tensor clamped on the range [0, 1].
         num_steps : int
             Number of output time steps.
         """
@@ -47,6 +47,53 @@ class RateEncoder(GenericEncoder):
             raise Exception("num_steps should be greater than 1.")
 
         if num_steps > 1:
-            torch.stack(num_steps * [input], dim=-1)
+            input = torch.stack(num_steps * [input], dim=-1)
 
         return torch.bernoulli(input)
+
+
+class TTFEncoder(GenericEncoder):
+    """Time-to-first Encoder"""
+
+    def encode(
+            self,
+            input : torch.Tensor,
+            num_steps : int = 20):
+        """Encodes the data on a time-to-first encoding paradigm. Input should
+        be in the range [0, 1].
+
+        Expects data with a time a shape of [NCT], or, in general, [N...T].
+
+        Parameters
+        ----------
+        input : torch.Tensor
+            Input tensor clamped on the range [0, 1].
+        num_steps : int
+            Number of output time steps.
+        """
+        if torch.min(input) < 0.0 or torch.max(input) > 1.0:
+            raise Exception("Input dada should be between 0 and 1.")
+
+        if num_steps < 1:
+            raise Exception("num_steps should be greater than 1.")
+
+        if num_steps > 1:
+            input = torch.stack(num_steps * [input], dim=-1)
+
+        # Get rate based encoding
+        x = torch.bernoulli(input)
+
+        # Swap time dimension to first place
+        x = x.transpose(0, len(x.shape))
+
+        # Create a valid spike mask
+        valid_spike_mask = torch.ones_like(*x.shape[:-1])
+
+        for t in range(x.shape[0]):
+            # Choose only valid spikes
+            x[t] *= torch.where(x[t] > 0, valid_spike_mask, x[t])
+
+            # Invalidate current valid spikes for the future
+            valid_spike_mask -= x[t]
+
+        return x
