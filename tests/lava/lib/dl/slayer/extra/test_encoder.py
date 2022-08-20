@@ -16,6 +16,7 @@ from lava.proc import io
 
 from lava.lib.dl.slayer.extra.encoder import GenericEncoder
 from lava.lib.dl.slayer.extra.encoder import RateEncoder
+from lava.lib.dl.slayer.extra.encoder import TTFEncoder
 
 verbose = True if (('-v' in sys.argv) or ('--verbose' in sys.argv)) else False
 # Enabling torch sometimes causes multiprocessing error, especially in unittests
@@ -70,3 +71,23 @@ class TestRateEncoder(unittest.TestCase):
         encoder = RateEncoder()
         res = encoder(0.5 * torch.ones((4, 4, 4)), 3)
         assert 0.4 < res.mean() < 0.6
+        assert res.shape == (4, 4, 4, 3)
+
+
+class TestTTFEncoder(unittest.TestCase):
+    """Test Time-To-First Encoder"""
+
+    def test_ttf_encoder_creation(self):
+        try:
+            encoder = TTFEncoder()
+        except Exception:
+            self.fail("Cannot initialize TTFEncoder")
+
+    def test_ttf_encoder_results(self):
+        encoder = TTFEncoder()
+        res = encoder(torch.FloatTensor([[1, 0.6]]), 3)
+
+        assert torch.equal(
+            res,
+            torch.FloatTensor([[[1, 0, 0], [0, 0, 1]]])
+        )

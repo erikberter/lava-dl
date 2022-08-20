@@ -31,7 +31,7 @@ class RateEncoder(GenericEncoder):
         """Encodes the data on a rate encoding paradigm. Input should
         be in the range [0, 1].
 
-        Expects data with a time a shape of [NCT], or, in general, [N...T].
+        Expects data with a shape of [NC], or, in general, [N...C_k].
 
         Parameters
         ----------
@@ -62,7 +62,7 @@ class TTFEncoder(GenericEncoder):
         """Encodes the data on a time-to-first encoding paradigm. Input should
         be in the range [0, 1].
 
-        Expects data with a time a shape of [NCT], or, in general, [N...T].
+        Expects data with a time a shape of [NC], or, in general, [N...C_k].
 
         Parameters
         ----------
@@ -74,6 +74,9 @@ class TTFEncoder(GenericEncoder):
         if torch.min(data) < 0.0 or torch.max(data) > 1.0:
             raise ValueError("Input dada should be between 0 and 1.")
 
+        if len(data.shape) < 2:
+            raise ValueError("Input data should have at least 2 dimensions.")
+
         if num_steps < 1:
             raise ValueError("num_steps should be greater than 1.")
 
@@ -84,10 +87,10 @@ class TTFEncoder(GenericEncoder):
         x = torch.bernoulli(data)
 
         # Swap time dimension to first place
-        x = x.transpose(0, len(x.shape))
+        x = x.transpose(0, len(x.shape) - 1)
 
         # Create a valid spike mask
-        valid_spike_mask = torch.ones_like(*x.shape[:-1])
+        valid_spike_mask = torch.ones_like(x[0])
 
         for t in range(x.shape[0]):
             # Choose only valid spikes
@@ -95,5 +98,7 @@ class TTFEncoder(GenericEncoder):
 
             # Invalidate current valid spikes for the future
             valid_spike_mask -= x[t]
+
+        x = x.transpose(0, len(x.shape) - 1)
 
         return x
