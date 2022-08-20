@@ -80,18 +80,18 @@ https://www.garrickorchard.com/datasets/n-mnist
                     'dataset is not available locally.'
                 )
                 print('Attempting download (This will take a while) ...')
-                os.system(f'wget {source} -P {self.path}/ -q --show-progress')
+                # TODO Improve this line
+                #os.system(f'wget {source} -P {self.path}/ -q --show-progress')
                 print('Extracting files ...')
                 with zipfile.ZipFile(data_path + '.zip') as zip_file:
                     for member in zip_file.namelist():
                         zip_file.extract(member, self.path)
                 print('Download complete.')
         else:
-            assert len(glob.glob(f'{data_path}/*')) == 10, \
-                f'Dataset does not exist. Either set download=True '\
-                f'or download it from '\
-                f'https://www.garrickorchard.com/datasets/n-mnist '\
-                f'to {data_path}/'
+            if len(glob.glob(f'{data_path}/*')) != 10:
+                raise Exception("Dataset does not exist." \
+                    "Please install it from" \
+                    "https://www.garrickorchard.com/datasets/n-mnist")
 
         self.samples = glob.glob(f'{data_path}/*/*.bin')
         self.sampling_time = sampling_time
