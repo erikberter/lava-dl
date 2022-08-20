@@ -8,6 +8,7 @@ import torch
 from . import base
 from ..neuron import cuba
 from ..synapse import layer as synapse
+from ..synapse import updatable as updatable_synapse
 from ..axon import Delay
 
 
@@ -94,6 +95,18 @@ class Dense(AbstractCuba, base.AbstractDense):
 
 
 Dense.__doc__ = _doc_from_base(base.AbstractDense)
+
+
+class UpdatableDense(AbstractCuba, base.AbstractDense):
+    def __init__(self, *args, **kwargs):
+        super(UpdatableDense, self).__init__(*args, **kwargs)
+        self.synapse = updatable_synapse.Dense(**self.synapse_params)
+        if 'pre_hook_fx' not in kwargs.keys():
+            self.synapse.pre_hook_fx = self.neuron.quantize_8bit
+        del self.synapse_params
+
+
+UpdatableDense.__doc__ = _doc_from_base(base.AbstractDense)
 
 
 class Conv(AbstractCuba, base.AbstractConv):

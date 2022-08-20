@@ -42,6 +42,12 @@ neuron_param = {'threshold': 0.5,
                 'current_decay': 0.5,
                 'voltage_decay': 0.5}
 
+updatable_neuron_param = {
+    'threshold': 0.5,
+    'current_decay': 0.5,
+    'voltage_decay': 0.5,
+    'persistent_state': True}
+
 
 class TestCUBA(unittest.TestCase):
     """Test CUBA blocks"""
@@ -125,3 +131,152 @@ class TestCUBA(unittest.TestCase):
             print(output[0, 0, 0])
 
         self.assertTrue(np.abs(y[0].data.numpy() - output).sum() == 0)
+
+    def test_updatable_dense_block_contains_update_rule(self):
+        """Test updatable dense contains update rule."""
+
+        in_features = 10
+        out_features = 5
+
+        def update(weight, pre, post):
+            return weight
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features,
+            out_features,
+            update_rule=update
+        )
+
+        assert net.synapse.update_rule is not None
+
+    def test_updatable_dense_block_persists_state(self):
+        """Test updatable dense mantains persists state on neurons."""
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        time_steps = 1
+
+        def update(weight, pre, post):
+            return weight
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features,
+            out_features,
+            update_rule=update
+        )
+
+        x = (torch.ones([1, in_features, time_steps]) > 0.5).float()
+
+        f_res = net(x).clone().detach()
+
+        all_equal = False
+
+        # WHEN
+        for i in range(10):
+            res = net(x).clone().detach()
+            all_equal = all_equal and torch.equal(res, f_res)
+
+        # THEN
+        assert not all_equal
+
+    def test_updatable_dense_block_returns_correct_shape(self):
+        """Test updatable dense returns correct shape on execution."""
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        batch_size = 3
+        time_steps = 7
+
+        def update(weight, pre, post):
+            return weight
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features,
+            out_features,
+            update_rule=update
+        )
+
+        x = (torch.ones([batch_size, in_features, time_steps]) > 0.5).float()
+
+        # WHEN
+        res = net(x).clone().detach()
+
+        # THEN
+        assert res.shape == (3, 5, 7)
+
+    def test_updatable_dense_block_with_class_based_update_rule(self):
+        """Test updatable dense works with GenericUpdateRule subclasss."""
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        batch_size = 3
+        time_steps = 7
+
+        from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+
+        class CustomUpdateRule(GenericUpdateRule):
+            def __init__(self):
+                super(CustomUpdateRule, self).__init__()
+
+            def update(self, weight, **kwargs):
+                return weight
+
+        update_rule = CustomUpdateRule()
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features,
+            out_features,
+            update_rule=update_rule
+        )
+
+        x = (torch.ones([batch_size, in_features, time_steps]) > 0.5).float()
+
+        # WHEN
+        net(x).clone().detach()
+        assert True
+
+    def test_updatable_dense_block_with_update_rule_passes_extra_data(self):
+        """ Test updatable dense returns correct shape on execution. """
+
+        # GIVEN
+        in_features = 10
+        out_features = 5
+        batch_size = 3
+        time_steps = 1
+
+        from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+
+        class CustomUpdateRule(GenericUpdateRule):
+            def __init__(self):
+                super(CustomUpdateRule, self).__init__()
+
+            def update(self, weight, **kwargs):
+                if 'reward' not in kwargs:
+                    raise ValueError("No reward in parameters.")
+                return weight
+
+        update_rule = CustomUpdateRule()
+
+        net = slayer.block.cuba.UpdatableDense(
+            updatable_neuron_param,
+            in_features,
+            out_features,
+            update_rule=update_rule
+        )
+
+        x = (torch.ones([batch_size, in_features, time_steps]) > 0.5).float()
+
+        # WHEN
+        try:
+            net(x, reward=[0, -1, 2]).clone().detach()
+        except ValueError:
+            self.fail("Value error thrown.")
+
+    # TODO Test updatable dense export to h5py.

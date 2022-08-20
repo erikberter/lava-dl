@@ -447,6 +447,9 @@ class AbstractDense(torch.nn.Module):
         number of input neurons.
     out_neurons : int
         number of output neurons.
+    update_rule : function or GenericUpdateRule, optional
+        Util to update weigths after each time step.
+        Defaults to None.
     weight_scale : int, optional
         weight initialization scaling. Defaults to 1.
     weight_norm : bool, optional
@@ -465,11 +468,27 @@ class AbstractDense(torch.nn.Module):
     count_log : bool, optional
         flag to return event count log. If True, an additional value of average
         event rate is returned. Defaults to False.
+
+    Attributes
+    ----------
+    updatable : bool
+        flag to indicate whether weights are updatable with update rules.
+        If true, a update_rule execution will go on a loop over the time
+        dimension applying a update_rule after each time step.
     """
     def __init__(
-        self, neuron_params, in_neurons, out_neurons,
-        weight_scale=1, weight_norm=False, pre_hook_fx=None,
-        delay=False, delay_shift=True, mask=None, count_log=False,
+        self,
+        neuron_params,
+        in_neurons,
+        out_neurons,
+        update_rule=None,
+        weight_scale=1,
+        weight_norm=False,
+        pre_hook_fx=None,
+        delay=False,
+        delay_shift=True,
+        mask=None,
+        count_log=False,
     ):
         super(AbstractDense, self).__init__()
         # neuron parameters
@@ -482,6 +501,11 @@ class AbstractDense(torch.nn.Module):
             'weight_norm': weight_norm,
             'pre_hook_fx': pre_hook_fx,
         }
+
+        if update_rule is not None:
+            self.synapse_params['update_rule'] = update_rule
+
+        self.updatable = update_rule is not None
 
         self.count_log = count_log
 
@@ -499,9 +523,10 @@ class AbstractDense(torch.nn.Module):
         self.delay = None
         self.delay_shift = delay_shift
 
-    def forward(self, x):
-        """Forward computation method. The input can be either of ``NCT`` or
-        ``NCHWT`` format.
+    def forward(self, x, **kwargs):
+        """Forward computation method. The input format can be either of
+        ``NCT`` or ``NCHWT`` if no update_rule is present. Otherwise, the
+        input must be of format ``NCT``.
         """
         if self.mask is not None:
             if self.synapse.complex is True:
@@ -510,12 +535,43 @@ class AbstractDense(torch.nn.Module):
             else:
                 self.synapse.weight.data *= self.mask
 
-        z = self.synapse(x)
-        x = self.neuron(z)
-        if self.delay_shift is True:
-            x = delay(x, 1)
-        if self.delay is not None:
-            x = self.delay(x)
+        if not self.updatable:
+            z = self.synapse(x)
+            x = self.neuron(z)
+            if self.delay_shift is True:
+                x = delay(x, 1)
+            if self.delay is not None:
+                x = self.delay(x)
+        else:
+            # TODO Implement update rule dynamics
+
+            res = []
+            for t in range(x.shape[-1]):
+                z = self.synapse(x[:, :, t])
+                out = self.neuron(z)
+
+                # Apply a fake 1 delay.
+                # If not used, STDP will not work since
+                # if a pre spike causes a post spike, the null dt will make
+                # A_+ s_i - A_- s_j = 0
+                if not hasattr(self, 'temp_pos'):
+                    self.temp_pos = torch.zeros_like(out)
+
+                res += [self.temp_pos.clone().detach()]
+                self.temp_pos = out.clone().detach()
+
+                # Update the weights
+                update_elements = {
+                    'pre'   : x[:, :, t],
+                    'post'  : res[-1].squeeze(2),  # [N,C,T(1)] -> [N,C]
+                }
+
+                # To bypass lava implementation, send info through kwargs
+                update_elements.update(kwargs)
+
+                self.synapse.apply_update_rule(**update_elements)
+
+            x = torch.cat(res, dim=2)
 
         if self.count_log is True:
             return x, torch.mean(x > 0)
