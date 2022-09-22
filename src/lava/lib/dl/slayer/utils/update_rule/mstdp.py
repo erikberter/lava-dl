@@ -243,6 +243,7 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
 
         # Get all the inhibitory neurons
         inhib_mask = torch.where(weight < 0, -1, 1)
+        non_zero_mask = weight != 0
         weight = torch.abs(weight)
 
         # Apply Linear STDP dynamics
@@ -258,6 +259,7 @@ class LinearMSTDPETDense(DenseSynapticTraceUpdateRule):
         ).sum(dim=0)
 
         z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
+        z *= non_zero_mask
 
         self.e_trace *= self.e_decay
         self.e_trace += self.e_alfa * z * inhib_mask

@@ -482,6 +482,7 @@ class AbstractDense(torch.nn.Module):
         in_neurons,
         out_neurons,
         update_rule=None,
+        sparsity=1,
         weight_scale=1,
         weight_norm=False,
         pre_hook_fx=None,
@@ -504,6 +505,7 @@ class AbstractDense(torch.nn.Module):
 
         if update_rule is not None:
             self.synapse_params['update_rule'] = update_rule
+            self.synapse_params['sparsity'] = sparsity
 
         self.updatable = update_rule is not None
 
@@ -557,14 +559,16 @@ class AbstractDense(torch.nn.Module):
                 if not hasattr(self, 'temp_pos'):
                     self.temp_pos = torch.zeros_like(out)
 
-                res += [self.temp_pos.clone().detach()]
-                self.temp_pos = out.clone().detach()
+                res += [out.clone().detach()]
 
                 # Update the weights
                 update_elements = {
                     'pre'   : x[:, :, t],
-                    'post'  : res[-1].squeeze(2),  # [N,C,T(1)] -> [N,C]
+                    'post'  : self.temp_pos.clone().detach().squeeze(2),
+                    # [N,C,T(1)] -> [N,C]
                 }
+
+                self.temp_pos = out.clone().detach()
 
                 # To bypass lava implementation, send info through kwargs
                 update_elements.update(kwargs)
@@ -1281,7 +1285,7 @@ class AbstractKWTA(torch.nn.Module):
     """
     def __init__(
         self, neuron_params, in_neurons, out_neurons,
-        num_winners, self_excitation=0.5,
+        num_winners, update_rule=None, self_excitation=0.5,
         weight_scale=1, weight_norm=False,
         pre_hook_fx=None, delay_shift=True, requires_grad=True,
         count_log=False
@@ -1312,6 +1316,11 @@ class AbstractKWTA(torch.nn.Module):
 
         self.count_log = count_log
 
+        if update_rule is not None:
+            self.synapse_params['update_rule'] = update_rule
+
+        self.updatable = update_rule is not None
+
         # These variables must be initialized by another abstract function
         self.neuron = None
         self.synapse = None
@@ -1326,7 +1335,7 @@ class AbstractKWTA(torch.nn.Module):
     def clamp(self):
         self.self_excitation.data.clamp_(0, 1)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         """Forward computation method. The input can be either of ``NCT`` or
         ``NCHWT`` format.
         """
@@ -1338,6 +1347,9 @@ class AbstractKWTA(torch.nn.Module):
         # \vdots &\vdots &\ddots &\vdots\\
         # -1 &-1 &\cdots & a
         # \end{bmatrix},\qquad |a| < 1
+        if self.updatable:
+            pre_copy = x.clone().detach()  # Needed for pre-post
+
         if self.bias is None:
             z = self.synapse(x)
         else:
@@ -1363,14 +1375,50 @@ class AbstractKWTA(torch.nn.Module):
 
         for time in range(z.shape[-1]):
             dendrite = z[..., time:time + 1]
+
+            dentrite += spike  # Add recurrent values
+
+            dentrite += torch.rand(dentrite.shape) * 0.05
+            mask = dentrite == dentrite.max(dim=0)[0]
+
+            dentrite = torch.where(dentrite == )
+
             feedback = F.linear(
                 spike.reshape(x.shape[0], self.num_neurons),
                 recurrent_weight
             ).reshape(dendrite.shape) + recurrent_bias  # or max psp
+
+
+            print(f"El spike {spike}")
+            print(f"El spike_state {self.spike_state}")
+            print(f"El feedback {feedback}")
+            print(f"El dendrite {dendrite}")
+            print(f"El recurrent_weight {recurrent_weight}")
+            print(f"El recurrent_bias {recurrent_bias}")
             spike = self.neuron(dendrite + feedback)
+            print(f"El dendrite + feedback {dendrite + feedback}")
+            print(f"El spike2 {spike}")
             x[..., time:time + 1] = spike
 
-        # self.spike_state = spike.clone().detach().reshape(z.shape[:-1])
+            if self.updatable:
+                if not hasattr(self, 'temp_pos'):
+                    self.temp_pos = torch.zeros_like(spike)
+
+                # Update the weights
+                update_elements = {
+                    'pre'   : pre_copy[:, :, time],
+                    'post'  : self.temp_pos.clone().detach().squeeze(2),
+                    # [N,C,T(1)] -> [N,C]
+                }
+
+                self.temp_pos = spike.clone().detach()
+
+                # To bypass lava implementation, send info through kwargs
+                update_elements.update(kwargs)
+
+                self.synapse.apply_update_rule(**update_elements)
+
+        self.spike_state = 0.65 * spike.clone().detach().reshape(z.shape[:-1])
 
         if self.delay_shift is True:
             x = delay(x, 1)

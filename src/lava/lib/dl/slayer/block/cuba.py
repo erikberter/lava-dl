@@ -169,6 +169,18 @@ class KWTA(AbstractCuba, base.AbstractKWTA):
 KWTA.__doc__ = _doc_from_base(base.AbstractKWTA)
 
 
+class UpdatableKWTA(AbstractCuba, base.AbstractKWTA):
+    def __init__(self, *args, **kwargs):
+        super(UpdatableKWTA, self).__init__(*args, **kwargs)
+        self.synapse = updatable_synapse.Dense(**self.synapse_params)
+        if 'pre_hook_fx' not in kwargs.keys():
+            self.synapse.pre_hook_fx = self.neuron.quantize_8bit
+        del self.synapse_params
+
+
+UpdatableKWTA.__doc__ = _doc_from_base(base.AbstractKWTA)
+
+
 class Recurrent(AbstractCuba, base.AbstractRecurrent):
     def __init__(self, *args, **kwargs):
         super(Recurrent, self).__init__(*args, **kwargs)
