@@ -1,40 +1,38 @@
+from turtle import update
 import torch
 from abc import ABC
 
 
-class GenericUpdateRule(ABC):
-    """Abstract Update Rule class. Must be parent class of all update rules.
-        Contains the dynamics which all update rules share.
+class GenericSTDPLearningRule:
+    def __init__(self, F, G, H):
+        self.F = F
+        self.H = H
+        self.G = G
 
-        Attributes
-        ----------
-        weight_decay : float
-            rate of decrease in weights
-    """
-    def __init__(self, weight_decay : float = 1.0) -> None:
+    def update(self, weight, pre, post, **kwargs):
+        w_change = self.F(weight, pre, post) * self.G(kwargs) + self.H(kwargs)
 
-        self.weight_decay = weight_decay
+        weight += w_change
 
-    def update(self, weight : torch.Tensor, **kwargs) -> torch.Tensor:
-        """Updates the input weights.
-
-        Parameters
-        ----------
-        weight : torch.Tensor
-            Input weight of the layer
-
-        Returns
-        -------
-        torch.Tensor.
-            Updated weights.
-        """
-
-        weight *= self.weight_decay
+        # Signed Clamp
+        sign = weight.sign()
+        weight = weight.abs_().clamp_(self.W_min, self.W_max)
+        weight *= sign
 
         return weight
 
 
-class DenseSynapticTraceUpdateRule(GenericUpdateRule):
+class Identity:
+    def __init__(self, param = None):
+        self.param = param
+
+    def __call__(self, **kwargs):
+        if self.param is not None:
+            return kwargs[self.param]
+        else:
+            return 1
+
+class STDP_Base:
     """Abstract Update Rule class that implements synaptic trace
     for dense layers.
 
@@ -62,7 +60,7 @@ class DenseSynapticTraceUpdateRule(GenericUpdateRule):
             tau : float,
             beta : float,
             max_trace : float = -1.0,
-            **kwargs):
+            ):
         """
         Initialization of Synaptic Trace based update rule.
 
@@ -82,7 +80,6 @@ class DenseSynapticTraceUpdateRule(GenericUpdateRule):
             Defines the maximum value for the trace. If set to -1.0, then
             the trace will be unbounded.
         """
-        super().__init__(**kwargs)
 
         self.tau = tau
         self.beta = beta
@@ -92,7 +89,7 @@ class DenseSynapticTraceUpdateRule(GenericUpdateRule):
         self.pre_trace = torch.zeros((batch_size, in_neurons))
         self.post_trace = torch.zeros((batch_size, out_neurons))
 
-    def update(
+    def __call__(
             self,
             weight : torch.Tensor,
             pre : torch.Tensor,
@@ -100,8 +97,6 @@ class DenseSynapticTraceUpdateRule(GenericUpdateRule):
             **kwargs) -> torch.Tensor:
         """Updates synaptic traces. Also updates weights
         with GenericUpdateRule update function."""
-
-        weight = super().update(weight)
 
         # Update synaptic trace
         if self.max_trace == -1.0:
@@ -117,4 +112,104 @@ class DenseSynapticTraceUpdateRule(GenericUpdateRule):
             post_diff = self.beta * (self.post_trace - self.pre_trace) * pre
             self.post_trace = self.tau * self.post_trace + post_diff
 
-        return weight
+        A_plus_mat = torch.bmm(
+            post.unsqueeze(dim=-1),
+            torch.unsqueeze(self.pre_trace, dim=1)
+        ).sum(dim=0)
+
+        A_minus_mat = torch.bmm(
+            torch.unsqueeze(self.post_trace, dim=-1),
+            pre.unsqueeze(dim=1)
+        ).sum(dim=0)
+
+        z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
+
+        return z
+
+class Compose:
+    def __init__(self):
+        self.functions = []
+
+    def add(self, F):
+        self.functions += [F]
+
+    def __call__(self,
+        weight : torch.Tensor,
+        pre : torch.Tensor,
+        post : torch.Tensor,
+        **kwargs) -> torch.Tensor:
+        
+        w_change = self.functions[0](weight, pre, post)
+
+        for f in self.functions[1:]:
+            w_change = f(weight, pre, post, {"w_change" : w_change})
+        
+        return w_change
+
+class ET:
+    def __init__(self, 
+            in_neurons: int,
+            out_neurons: int,
+            e_decay : float = 0.85,
+            e_alfa : float = 0.5
+            ):
+
+        self.e_decay = e_decay
+        self.e_alfa = e_alfa
+
+        self.e_trace = torch.zeros((out_neurons, in_neurons))
+
+    def __call__(self,
+        weight : torch.Tensor,
+        pre : torch.Tensor,
+        post : torch.Tensor,
+        w_change : torch.Tensors):
+
+        self.e_trace *= self.e_decay
+        self.e_trace += self.e_alfa * w_change
+
+        return w_change
+
+class STDPET:
+    def __init__(self, 
+        in_neurons: int,
+        out_neurons: int,
+        batch_size : int,
+        tau : float,
+        beta : float,
+        max_trace : float = -1.0,
+        e_decay : float = 0.85,
+        e_alfa : float = 0.5
+        ):
+
+        self.k = Compose()
+        self.k.add(STDP_Base(in_neurons, out_neurons, tau, beta, max_trace))
+        self.k.add(ET(in_neurons, out_neurons, batch_size, e_decay, e_alfa))
+    
+    def __call__(self,
+        weight : torch.Tensor,
+        pre : torch.Tensor,
+        post : torch.Tensor,
+        **kwargs):
+
+        return self.k(weight, pre, post, kwargs)
+
+class MSTDP(GenericSTDPLearningRule):
+    def __init__(self,
+        in_neurons: int,
+        out_neurons: int,
+        batch_size : int,
+        tau : float,
+        beta : float,
+        max_trace : float = -1.0,
+        e_decay : float = 0.85,
+        e_alfa : float = 0.5
+        ):
+        
+        F = STDPET(in_neurons, out_neurons, batch_size, tau, beta, max_trace, e_decay, e_alfa)
+
+        G = Identity('reward') 
+
+        self.__init__(F, G, Identity())
+
+
