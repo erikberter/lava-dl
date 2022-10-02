@@ -139,4 +139,4 @@ class Homeostasis(GenericSTDPLearningRule):
         H.add(F)
         H.add(G)
 
-        super().__init__(H, Identity())
+        super().__init__(H, Identity(), **kwargs)

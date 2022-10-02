@@ -31,7 +31,8 @@ class STDP_Functional:
             beta : float = 1,
             A_plus : float = 1,
             A_minus : float = 1,
-            max_trace : float = -1.0
+            max_trace : float = -1.0,
+            **kwargs
     ):
         """
         Initialization of Synaptic Trace based update rule.

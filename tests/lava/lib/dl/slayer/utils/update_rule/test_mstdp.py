@@ -48,7 +48,14 @@ class TestLinearMSTDPDenseFunctional(unittest.TestCase):
     def test_linear_mstdp_dense_functional_creation(self):
         """Test if the LinearMSTDP class can be correctly launched."""
         try:
-            update_rule = MSTDP(1, 1, 1, tau=0.5)
+            plasticity_params = {
+                'W_max' : 0.2,
+                'W_min' : 0.00,
+                'nu_zero' : 0.03,
+                'A_plus' : 0.42,
+                'A_minus' : 0.19
+            }
+            update_rule = MSTDP(1, 1, 1, **plasticity_params)
         except Exception:
             self.fail("LinearMSTDPDense creation failed")
 

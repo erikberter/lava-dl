@@ -2,7 +2,7 @@ import torch
 
 
 class GenericSTDPLearningRule:
-    def __init__(self, F, G, H=None, W_max=2.0, W_min=0.0):
+    def __init__(self, F, G, H=None, W_max=2.0, W_min=0.0, **kwargs):
         self.F = F
         self.G = G
         self.H = H

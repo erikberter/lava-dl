@@ -12,7 +12,6 @@ class MSTDP(GenericSTDPLearningRule):
         batch_size : int,
         **kwargs
     ):
-
         F = STDPET(
             in_neurons,
             out_neurons,
@@ -21,7 +20,7 @@ class MSTDP(GenericSTDPLearningRule):
 
         G = Identity('reward')
 
-        super().__init__(F, G)
+        super().__init__(F, G, **kwargs)
 
 
 class MSTDP_Functional:
