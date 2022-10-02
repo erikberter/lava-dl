@@ -1107,7 +1107,7 @@ class AbstractConvT(torch.nn.Module):
 
 
 class AbstractUnpool(torch.nn.Module):
-    """Abstract Unpool block class. This should never be instantiated on its own.
+    """Abstract Unpool block class. This should never be instantiated on its own
 
     Parameters
     ----------
@@ -1286,18 +1286,18 @@ class AbstractKWTA(torch.nn.Module):
         event rate is returned. Defaults to False.
     """
     def __init__(
-        self, 
-        neuron_params, 
-        in_neurons, 
+        self,
+        neuron_params,
+        in_neurons,
         out_neurons,
-        num_winners, 
-        update_rule=None, 
+        num_winners,
+        update_rule=None,
         self_excitation=0.5,
         sparsity=1,
-        weight_scale=1, 
+        weight_scale=1,
         weight_norm=False,
-        pre_hook_fx=None, 
-        delay_shift=True, 
+        pre_hook_fx=None,
+        delay_shift=True,
         requires_grad=True,
         count_log=False
     ):
@@ -1351,14 +1351,7 @@ class AbstractKWTA(torch.nn.Module):
         """Forward computation method. The input can be either of ``NCT`` or
         ``NCHWT`` format.
         """
-        # s_\text{out}[t] = f_s\left(\mathbf{W}\,s_\text{in}[t]
-        #               + \mathbf{R}\,s_{out}[t-1] + \alpha\,(N-2K)\right)\\
-        # \mathbf{R} = \begin{bmatrix}
-        # a &-1 &\cdots &-1\\
-        # -1 & a &\cdots &-1\\
-        # \vdots &\vdots &\ddots &\vdots\\
-        # -1 &-1 &\cdots & a
-        # \end{bmatrix},\qquad |a| < 1
+
         if self.updatable:
             pre_copy = x.clone().detach()  # Needed for pre-post
 
@@ -1382,8 +1375,6 @@ class AbstractKWTA(torch.nn.Module):
             recurrent_bias = self.neuron.quantize_8bit(recurrent_bias)
 
         spike = torch.zeros(z.shape[:-1]).to(x.device)
-        #if z.shape[0] == self.spike_state.shape[0]:
-        #    spike = spike + self.spike_state
 
         for time in range(z.shape[-1]):
             dendrite = z[..., time : time + 1]

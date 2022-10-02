@@ -121,6 +121,12 @@ $ pip install -U pip
 $ pip install lava-dl-0.2.0.tar.gz
 ```
 
+#### [PyCodeStyle]
+
+```
+pycodestyle --ignore=W503,E203,F401 --max-line-length=80 src
+```
+
 ## Getting Started
 
 **End to end training tutorials**
