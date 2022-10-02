@@ -48,7 +48,7 @@ class StreamingMovingAverage:
         return self.early_start or self.i >= self.window_size
 
 
-class Homo:
+class Homeostasis_Functional:
     """
     Based on Biologically Plausible Models of
     Homeostasis and STDP: Stability and Learning
@@ -109,32 +109,27 @@ class Homeostasis(GenericSTDPLearningRule):
         in_neurons: int,
         out_neurons: int,
         batch_size : int,
-        tau : float = 0.92,
-        beta : float = 1,
-        max_trace : float = -1.0,
-        e_decay : float = 0.85,
-        e_alfa : float = 0.5,
+
         T : int = 50,
-        window_size : int = 5,
+        window_size : int = 50,
         early_start : bool = False,
-        min_val : float = 0.1
+        min_val : float = 0.1,
+        gamma : float = 1.0,
+        **kwargs
     ):
 
         F = MSTDP_Functional(
             in_neurons,
             out_neurons,
             batch_size,
-            tau,
-            beta,
-            max_trace,
-            e_decay,
-            e_alfa)
+            **kwargs)
 
-        G = Homo(
+        G = Homeostasis_Functional(
             in_neurons,
             out_neurons,
             batch_size,
             T=T,
+            gamma=gamma,
             window_size=window_size,
             early_start=early_start,
             min_val=min_val)
