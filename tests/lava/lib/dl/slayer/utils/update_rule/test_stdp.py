@@ -95,7 +95,7 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
 
     def test_linear_stdp_does_not_create_weight(self):
         """DOC"""
-        F = STDP_Functional(1, 1, 1, nu_zero=1)
+        F = STDP_Functional(2, 2, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]])
@@ -111,7 +111,7 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
 
     def test_linear_stdp_does_not_create_weight_2(self):
         """DOC"""
-        F = STDP_Functional(1, 1, 1, nu_zero=1)
+        F = STDP_Functional(2, 2, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]])
@@ -124,3 +124,19 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
         assert torch.equal(
             weight,
             torch.FloatTensor([[1.0736, 1.0736], [1.0736, 0.0]]))
+
+    def test_linear_stdp_does_not_create_weight_different_shape(self):
+        """DOC"""
+        F = STDP_Functional(2, 1, 1, nu_zero=1)
+        update_rule = GenericSTDPLearningRule(F, Identity())
+
+        pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]])
+        post = torch.FloatTensor([[[0, 1, 0, 0, 0, 0]]])
+
+        weight = torch.Tensor([[1, 0]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(weight, pre[:, :, t], post[:, :, t])
+
+        assert torch.equal(
+            weight,
+            torch.FloatTensor([[1.0736, 0.0]]))

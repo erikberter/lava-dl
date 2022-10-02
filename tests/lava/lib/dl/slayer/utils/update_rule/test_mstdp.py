@@ -77,6 +77,27 @@ class TestLinearMSTDPDenseFunctional(unittest.TestCase):
 
         assert torch.isclose(weight, torch.FloatTensor([[1.000]]), rtol=1e-03)
 
+    def test_linear_mstdp_does_not_create_weight_different_shape(self):
+        """DOC"""
+        update_rule = MSTDP(2, 1, 1, tau=0.5)
+
+        pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]])
+        post = torch.FloatTensor([[[0, 1, 0, 0, 0, 0]]])
+        reward = torch.FloatTensor([1, 1, 1, 0.5, 0.3, 0.2])
+
+        weight = torch.Tensor([[1, 0]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(
+                weight,
+                pre[:, :, t],
+                post[:, :, t],
+                reward=reward[t])
+
+        assert torch.all(torch.isclose(
+            weight,
+            torch.FloatTensor([[1.5125, 0.0]]),
+            rtol=1e-3))
+
     def test_linear_mstdp_dense_functional_works_on_batch(self):
         """Test if the MSTDP update rule works on batch."""
         update_rule = MSTDP(1, 1, 1, tau=0.5)

@@ -140,7 +140,6 @@ class TestHomeostasisDenseFunctional(unittest.TestCase):
         weight = torch.Tensor([[1, 1], [1, 0]])
 
         for t in range(pre.shape[-1]):
-            print(weight)
             weight = update_rule.update(
                 weight,
                 pre[:, :, t],
@@ -148,6 +147,42 @@ class TestHomeostasisDenseFunctional(unittest.TestCase):
                 reward=reward[t])
 
         assert weight[0, 0] > 1
-        assert weight[1, 0] > 1
-        assert weight[0, 1] < 1
+        assert weight[0, 1] > 1
+        assert weight[1, 0] < 1
         assert torch.abs(weight[1, 1]) < 0.01  # Assert 0
+
+    def test_homeostasis_does_not_create_weight_different_shape(self):
+        """DOC"""
+        update_rule = Homeostasis(
+            3,
+            2,
+            1,
+            tau=0.5,
+            window_size=4,
+            early_start=False
+        )
+
+        pre = torch.FloatTensor([[
+            [1, 0, 0, 1, 0, 0, 0, 0],
+            [1, 0, 0, 1, 0, 0, 0, 0],
+            [1, 0, 0, 1, 0, 0, 0, 0]]])
+        post = torch.FloatTensor([[
+            [0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0]]])
+        reward = torch.FloatTensor([0, 0, 0, 0, 0, 0, 0, 0])
+
+        weight = torch.Tensor([[1, 0, 0], [0, 0, 0]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(
+                weight,
+                pre[:, :, t],
+                post[:, :, t],
+                reward=reward[t])
+
+        assert torch.all(torch.isclose(
+            weight,
+            torch.FloatTensor([
+                [1.0171, 0.0, 0.0],
+                [0.0, 0.0, 0.0]
+            ]),
+            rtol=1e-3))

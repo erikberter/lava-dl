@@ -93,14 +93,14 @@ class Homeostasis_Functional:
         w_change = kwargs["w_change"]
         rate = self.sma(post)
 
-        w_weight = self.alpha * (1 - rate / self.r_exp) * weight
+        w_weight = self.alpha * weight * (1 - rate / self.r_exp)[:, None]
 
         w_weight = w_weight + w_change
 
         denominator = torch.abs(1 - rate / self.r_exp) * self.gamma
         # denominator *= self.T  I think this variable is not needed
 
-        return rate / denominator * w_weight
+        return (rate[:, None] / denominator[:, None]) * w_weight
 
 
 class Homeostasis(GenericSTDPLearningRule):
