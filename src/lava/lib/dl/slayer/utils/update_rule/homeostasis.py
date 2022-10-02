@@ -5,11 +5,19 @@ from lava.lib.dl.slayer.utils.update_rule.mstdp import MSTDP_Functional
 
 
 class StreamingMovingAverage:
-    def __init__(self, n_out, window_size, early_start=False):
+    def __init__(
+        self,
+        n_out,
+        window_size,
+        early_start=False,
+        min_val : float = 0.1
+    ):
         self.window_size = window_size
         self.values = torch.zeros((window_size, n_out))
         self.early_start = early_start
         self.i = 0
+
+        self.min_val = min_val
 
     def __call__(self, value):
         if self.i < self.window_size:
@@ -27,9 +35,14 @@ class StreamingMovingAverage:
 
     def get_rate(self):
         if self.i < self.window_size:
-            return torch.mean(self.values[:self.i], dim=0)
+            val = torch.mean(self.values[:self.i], dim=0)
+        else:
+            val = torch.mean(self.values, dim=0)
 
-        return torch.mean(self.values, dim=0)
+        return torch.maximum(
+            val,
+            self.min_val * torch.ones_like(val)
+        )
 
     def rate_available(self):
         return self.early_start or self.i >= self.window_size
@@ -51,7 +64,8 @@ class Homo:
         gamma : float = 1.0,
         alpha : float = 0.02,
         window_size : int = 50,
-        early_start : bool = False
+        early_start : bool = False,
+        min_val : float = 0.1,
     ):
         self.alpha = alpha
         self.gamma = gamma
@@ -61,7 +75,8 @@ class Homo:
         self.sma = StreamingMovingAverage(
             n_out=out_neurons,
             window_size=window_size,
-            early_start=early_start)
+            early_start=early_start,
+            min_val=min_val)
 
     def __call__(
         self,
@@ -101,7 +116,8 @@ class Homeostasis(GenericSTDPLearningRule):
         e_alfa : float = 0.5,
         T : int = 50,
         window_size : int = 5,
-        early_start : bool = False
+        early_start : bool = False,
+        min_val : float = 0.1
     ):
 
         F = MSTDP_Functional(
@@ -120,7 +136,8 @@ class Homeostasis(GenericSTDPLearningRule):
             batch_size,
             T=T,
             window_size=window_size,
-            early_start=early_start)
+            early_start=early_start,
+            min_val=min_val)
 
         H = Compose()
 

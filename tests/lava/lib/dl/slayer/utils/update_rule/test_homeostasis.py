@@ -45,12 +45,29 @@ os.makedirs(tempdir, exist_ok=True)
 class TestHomeostasisDenseFunctional(unittest.TestCase):
     """Test HomeostasisDense blocks"""
 
-#    def test_homeostasis_dense_functional_creation(self):
-#        """Test if the HomeostasisDense class can be correctly launched."""
-#        try:
-#            update_rule = Homeostasis(1, 1, 1, tau=0.5)
-#        except Exception:
-#            self.fail("HomeostasisDense creation failed")
+    def test_homeostasis_dense_functional_creation(self):
+        """Test if the HomeostasisDense class can be correctly launched."""
+        try:
+            update_rule = Homeostasis(1, 1, 1, tau=0.5)
+        except Exception:
+            self.fail("HomeostasisDense creation failed")
+
+    def test_homeostasis_dense_functional_updates_on_zero_rate(self):
+        """Test if the HomeostasisDense dynamics are correctly implemented."""
+        update_rule = Homeostasis(1, 1, 1, tau=0.5, early_start=True)
+        pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0]]])
+        post = torch.FloatTensor([[[0, 0, 0, 0, 0, 0]]])
+        reward = torch.FloatTensor([0, 0, 0, 0, 0, 0])
+
+        weight = torch.Tensor([[1]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(
+                weight,
+                pre[:, :, t],
+                post[:, :, t],
+                reward=reward[t])
+
+        assert weight.squeeze() > 1.00
 
     def test_homeostasis_dense_functional_updates_on_low_rate(self):
         """Test if the HomeostasisDense dynamics are correctly implemented."""
