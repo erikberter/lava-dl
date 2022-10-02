@@ -24,9 +24,10 @@ class Compose:
         weight : torch.Tensor,
         pre : torch.Tensor,
         post : torch.Tensor,
-        **kwargs) -> torch.Tensor:
+        **kwargs
+    ) -> torch.Tensor:
 
-        w_change = self.functions[0](weight, pre, post)
+        w_change = self.functions[0](weight, pre, post, **kwargs)
 
         for f in self.functions[1:]:
             w_change = f(weight, pre, post, w_change=w_change, **kwargs)
