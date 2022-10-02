@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import torch
 
-from lava.lib.dl.slayer.utils.update_rule.stdp import STDP_Base
+from lava.lib.dl.slayer.utils.update_rule.stdp import STDP_Functional
 from lava.lib.dl.slayer.utils.update_rule.functional import Identity
 from lava.lib.dl.slayer.utils.update_rule.base import GenericSTDPLearningRule
 from lava.lib.dl import slayer, netx
@@ -58,14 +58,14 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
     def test_linear_stdp_dense_functional_creation(self):
         """Test if the LinearSTDP class can be correctly launched."""
         try:
-            F = STDP_Base(1, 1, 1)
+            F = STDP_Functional(1, 1, 1)
             update_rule = GenericSTDPLearningRule(F, Identity())
         except Exception:
             self.fail("LinearSTDPDense creation failed")
 
     def test_linear_stdp_dense_functional_updates_correctly(self):
         """Test if the STDP dynamics are correctly implemented."""
-        F = STDP_Base(1, 1, 1, nu_zero=1)
+        F = STDP_Functional(1, 1, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0]]])
@@ -79,7 +79,7 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
 
     def test_linear_stdp_works_on_batch(self):
         """Test if the STDP update rule works on batch."""
-        F = STDP_Base(1, 1, 1, nu_zero=1)
+        F = STDP_Functional(1, 1, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0]], [[1, 0, 0, 1, 0, 0]]])
@@ -95,7 +95,7 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
 
     def test_linear_stdp_does_not_create_weight(self):
         """DOC"""
-        F = STDP_Base(1, 1, 1, nu_zero=1)
+        F = STDP_Functional(1, 1, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]])
@@ -111,7 +111,7 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
 
     def test_linear_stdp_does_not_create_weight_2(self):
         """DOC"""
-        F = STDP_Base(1, 1, 1, nu_zero=1)
+        F = STDP_Functional(1, 1, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]])

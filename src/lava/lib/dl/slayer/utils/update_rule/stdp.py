@@ -1,7 +1,7 @@
 import torch
 
 
-class STDP_Base:
+class STDP_Functional:
     """Abstract Update Rule class that implements synaptic trace
     for dense layers.
 
@@ -31,7 +31,8 @@ class STDP_Base:
             beta : float = 1,
             A_plus : float = 1,
             A_minus : float = 1,
-            max_trace : float = -1.0):
+            max_trace : float = -1.0
+    ):
         """
         Initialization of Synaptic Trace based update rule.
 
@@ -70,7 +71,8 @@ class STDP_Base:
             weight : torch.Tensor,
             pre : torch.Tensor,
             post : torch.Tensor,
-            **kwargs) -> torch.Tensor:
+            **kwargs
+    ) -> torch.Tensor:
         """Updates synaptic traces. Also updates weights
         with GenericUpdateRule update function."""
 

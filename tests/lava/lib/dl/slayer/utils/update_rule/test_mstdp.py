@@ -54,7 +54,7 @@ class TestLinearMSTDPDenseFunctional(unittest.TestCase):
 
     def test_linear_mstdp_dense_functional_updates_correctly(self):
         """Test if the MSTDP dynamics are correctly implemented."""
-        update_rule = MSTDP(1, 1, 1, tau=0.5)
+        update_rule = MSTDP(1, 1, 1, tau=0.5, nu_zero=0.01)
 
         pre = torch.FloatTensor([[[1, 0, 0, 1, 0, 0]]])
         post = torch.FloatTensor([[[0, 0, 1, 0, 0, 0]]])

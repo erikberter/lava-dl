@@ -10,24 +10,14 @@ class MSTDP(GenericSTDPLearningRule):
         in_neurons: int,
         out_neurons: int,
         batch_size : int,
-        tau : float = 0.92,
-        beta : float = 1,
-        max_trace : float = -1.0,
-        e_decay : float = 0.85,
-        e_alfa : float = 0.5,
-        nu_zero : float = 0.01,
+        **kwargs
     ):
 
         F = STDPET(
             in_neurons,
             out_neurons,
             batch_size,
-            tau,
-            beta,
-            max_trace,
-            e_decay,
-            e_alfa,
-            nu_zero=nu_zero)
+            **kwargs)
 
         G = Identity('reward')
 
@@ -40,24 +30,14 @@ class MSTDP_Functional:
         in_neurons: int,
         out_neurons: int,
         batch_size : int,
-        tau : float = 0.92,
-        beta : float = 1,
-        max_trace : float = -1.0,
-        e_decay : float = 0.85,
-        e_alfa : float = 0.5,
-        nu_zero : float = 0.01,
+        **kwargs
     ):
 
         self.F = STDPET(
             in_neurons,
             out_neurons,
             batch_size,
-            tau,
-            beta,
-            max_trace,
-            e_decay,
-            e_alfa,
-            nu_zero=nu_zero)
+            **kwargs)
 
         self.G = Identity('reward')
 

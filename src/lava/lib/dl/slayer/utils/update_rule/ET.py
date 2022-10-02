@@ -1,6 +1,6 @@
 import torch
 
-from .stdp import STDP_Base
+from .stdp import STDP_Functional
 from .functional import Compose, Identity
 
 
@@ -35,28 +35,44 @@ class ET:
 
 
 class STDPET:
+    """
+        In this class, the nu_zero for the STDP will be set to 1.0 since
+        it will be used in the STDPET class in the __call__ method.
+
+    """
+
     def __init__(
         self,
         in_neurons: int,
         out_neurons: int,
         batch_size : int,
-        tau : float,
-        beta : float,
-        max_trace : float = -1.0,
         e_decay : float = 0.85,
         e_alfa : float = 0.5,
         nu_zero : float = 1,
+        **kwargs
     ):
+        # Save current value of nu_zero and replace it with 1.0
 
-        self.k = Compose()
+        self.F = Compose()
 
-        self.k.add(
-            STDP_Base(
-                in_neurons, out_neurons, batch_size,
-                tau=tau, beta=beta, max_trace=max_trace,
-                nu_zero=1))
+        self.F.add(
+            STDP_Functional(
+                in_neurons,
+                out_neurons,
+                batch_size,
+                nu_zero=1.0,
+                **kwargs
+            )
+        )
 
-        self.k.add(ET(in_neurons, out_neurons, e_decay, e_alfa))
+        self.F.add(
+            ET(
+                in_neurons,
+                out_neurons,
+                e_decay,
+                e_alfa
+            )
+        )
 
         self.nu_zero = nu_zero
 
@@ -68,4 +84,4 @@ class STDPET:
         **kwargs
     ):
 
-        return self.nu_zero * self.k(weight, pre, post, **kwargs)
+        return self.nu_zero * self.F(weight, pre, post, **kwargs)
