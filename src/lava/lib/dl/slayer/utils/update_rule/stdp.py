@@ -1,11 +1,11 @@
 import torch
 
-from .base import GenericUpdateRule, DenseSynapticTraceUpdateRule
 
+class STDP_Base:
+    """Abstract Update Rule class that implements synaptic trace
+    for dense layers.
 
-class LinearSTDPDense(DenseSynapticTraceUpdateRule):
-    """Applies a two-factor linear stdp update.
-    This implies that A_{+,i,j} and A_{-,i,j} are both constant.
+    This class should not be instanciated by itself.
 
     Attributes
     ----------
@@ -13,90 +13,81 @@ class LinearSTDPDense(DenseSynapticTraceUpdateRule):
         Rate of decay of the synaptic trace.
     beta : float
         Change in the synaptic trace after each spike.
-    A_plus : float
-        Max change in STDP weight strengthening.
-    A_minus : float
-        Max change in STDP weight weakening.
-    W_max : float
-        Max value for a weight.
-    W_min : float
-        Min value for a weight.
     pre_trace : torch.Tensor
         Synaptic trace of input spikes.
     post_trace : torch.Tensor
         Synaptic trace of output spikes.
-    nu_zero : float
-        Learning rate.
-    """
+    max_trace : float
+        Defines the maximum value for the trace. If set to -1.0, then
+        the trace will be unbounded."""
+
     def __init__(
             self,
             in_neurons: int,
             out_neurons: int,
             batch_size : int,
-            tau: float = 0.92,
-            beta : float = 1.0,
-            A_plus : float = 1.0,
-            A_minus : float = 1.0,
-            W_max : float = 2.0,
-            W_min : float = 0.0,
             nu_zero : float = 0.01,
-            **kwargs) -> None:
-        """Initialization method.
+            tau : float = 0.92,
+            beta : float = 1,
+            A_plus : float = 1,
+            A_minus : float = 1,
+            max_trace : float = -1.0):
+        """
+        Initialization of Synaptic Trace based update rule.
 
         Parameters
         ----------
         in_neurons : int
-            Number of input neurons.
+            Number of input neurons
         out_neurons : int
-            Number of output neurons.
+            Number of output neurons
         batch_size : int
-            Size of the batch.
+            Size of the batch
         tau : float
             Rate of decay of the synaptic trace.
         beta : float
             Change in the synaptic trace after each spike.
-        A_plus : float
-            Max change in STDP weight strengthening.
-        A_minus : float
-            Max change in STDP weight weakening.
-        W_max : float
-            Max value for a weight.
-        W_min : float
-            Min value for a weight.
-        nu_zero : float
-            Learning rate.
+        max_trace : float
+            Defines the maximum value for the trace. If set to -1.0, then
+            the trace will be unbounded.
         """
-        super(LinearSTDPDense, self).__init__(
-            in_neurons=in_neurons,
-            out_neurons=out_neurons,
-            batch_size=batch_size,
-            tau=tau,
-            beta=beta,
-            **kwargs)
+
+        self.tau = tau
+        self.beta = beta
 
         self.A_plus = A_plus
         self.A_minus = A_minus
 
-        self.W_max = W_max
-        self.W_min = W_min
+        self.max_trace = max_trace
 
         self.nu_zero = nu_zero
 
-    def update(
+        self.pre_trace = torch.zeros((batch_size, in_neurons))
+        self.post_trace = torch.zeros((batch_size, out_neurons))
+
+    def __call__(
             self,
             weight : torch.Tensor,
             pre : torch.Tensor,
             post : torch.Tensor,
-            **kwargs) -> None:
-        """Updates the weights based on the stdp dynamics."""
+            **kwargs) -> torch.Tensor:
+        """Updates synaptic traces. Also updates weights
+        with GenericUpdateRule update function."""
 
-        weight = super().update(weight, pre, post)
+        # Update synaptic trace
+        if self.max_trace == -1.0:
+            # Unbounded synaptic trace
+            self.pre_trace = self.tau * self.pre_trace + self.beta * pre
+            self.post_trace = self.tau * self.post_trace + self.beta * post
 
-        # Get all the inhibitory neurons
-        inhib_mask = torch.where(weight < 0, -1, 1)
-        weight = torch.abs(weight)
+        else:
+            # Bounded synaptic trace
+            pre_diff = self.beta * (self.max_trace - self.pre_trace) * pre
+            self.pre_trace = self.tau * self.pre_trace + pre_diff
 
-        # Apply Linear STDP dynamics
+            post_diff = self.beta * (self.post_trace - self.pre_trace) * pre
+            self.post_trace = self.tau * self.post_trace + post_diff
+
         A_plus_mat = torch.bmm(
             post.unsqueeze(dim=-1),
             torch.unsqueeze(self.pre_trace, dim=1)
@@ -108,12 +99,5 @@ class LinearSTDPDense(DenseSynapticTraceUpdateRule):
         ).sum(dim=0)
 
         z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
-        weight += self.nu_zero * z * inhib_mask
 
-        # Clamp to zero
-        weight = torch.clamp(weight, self.W_min, self.W_max)
-
-        # Reapply inhib mask
-        weight *= inhib_mask
-
-        return weight
+        return self.nu_zero * z
