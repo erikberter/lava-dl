@@ -140,3 +140,33 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
         assert torch.equal(
             weight,
             torch.FloatTensor([[1.0736, 0.0]]))
+
+
+
+    def test_linear_stdp_dense_functional_does_not_change_sign(self):
+        """Test if the STDP dynamics are correctly implemented."""
+        F = STDP_Functional(1, 1, 1, nu_zero=1)
+        update_rule = GenericSTDPLearningRule(F, Identity())
+
+        pre = torch.FloatTensor([[[0, 1, 0, 0, 0, 1]]])
+        post = torch.FloatTensor([[[1, 0, 0, 0, 1, 0]]])
+
+        weight = torch.Tensor([[1]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(weight, pre[:, :, t], post[:, :, t])
+
+        assert torch.equal(weight, torch.FloatTensor([[0.0]]))
+
+    def test_linear_stdp_dense_functional_updates_correctly_on_antihebbian(self):
+        """Test if the STDP dynamics are correctly implemented."""
+        F = STDP_Functional(1, 1, 1, nu_zero=1)
+        update_rule = GenericSTDPLearningRule(F, Identity())
+
+        pre = torch.FloatTensor([[[1, 0, 0, 0, 0, 0]]])
+        post = torch.FloatTensor([[[0, 0, 1, 0, 0, 0]]])
+
+        weight = torch.Tensor([[-1]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(weight, pre[:, :, t], post[:, :, t])
+
+        assert torch.isclose(weight, torch.FloatTensor([[-0.1536]]), rtol=1e-3)

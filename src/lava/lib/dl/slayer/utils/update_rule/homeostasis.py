@@ -66,11 +66,15 @@ class Homeostasis_Functional:
         window_size : int = 50,
         early_start : bool = False,
         min_val : float = 0.1,
+        **kwargs
     ):
         self.alpha = alpha
         self.gamma = gamma
         self.r_exp = r_exp
         self.T = T
+
+        self.w_change_s = 0.0
+        self.w_update_s = 0.0
 
         self.sma = StreamingMovingAverage(
             n_out=out_neurons,
@@ -95,9 +99,12 @@ class Homeostasis_Functional:
 
         w_weight = self.alpha * weight * (1 - rate / self.r_exp)[:, None]
 
+        self.w_update_s += w_weight.sum()
+        self.w_change_s += w_change.sum()
+
         w_weight = w_weight + w_change
 
-        denominator = torch.abs(1 - rate / self.r_exp) * self.gamma
+        denominator = 1 + torch.abs(1 - rate / self.r_exp) * self.gamma
         # denominator *= self.T  I think this variable is not needed
 
         return (rate[:, None] / denominator[:, None]) * w_weight
@@ -132,7 +139,8 @@ class Homeostasis(GenericSTDPLearningRule):
             gamma=gamma,
             window_size=window_size,
             early_start=early_start,
-            min_val=min_val)
+            min_val=min_val,
+            **kwargs)
 
         H = Compose()
 

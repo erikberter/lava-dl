@@ -13,6 +13,7 @@ class GenericSTDPLearningRule:
     def update(self, weight, pre, post, **kwargs):
 
         zero_mask = weight != 0
+        sign = weight.sign()
 
         w_change = self.F(weight, pre, post, **kwargs) * self.G(**kwargs)
 
@@ -23,7 +24,10 @@ class GenericSTDPLearningRule:
         weight += w_change
 
         # Signed Clamp
-        sign = weight.sign()
+
+        
+
+        weight *= sign
         weight = weight.clamp_(self.W_min, self.W_max)
         weight *= sign
 
