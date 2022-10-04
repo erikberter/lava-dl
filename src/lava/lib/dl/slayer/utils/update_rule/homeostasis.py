@@ -97,7 +97,7 @@ class Homeostasis_Functional:
         w_change = kwargs["w_change"]
         rate = self.sma(post)
 
-        w_weight = self.alpha * weight * (1 - rate / self.r_exp)[:, None]
+        w_weight = self.alpha * torch.abs(weight) * (1 - rate / self.r_exp)[:, None]
 
         self.w_update_s += w_weight.sum()
         self.w_change_s += w_change.sum()

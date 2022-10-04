@@ -102,6 +102,57 @@ class TestHomeostasisDenseFunctional(unittest.TestCase):
                 reward=reward[t])
 
         assert weight.squeeze() < 1.00
+    
+    def test_homeostasis_dense_functional_reduce_on_negative(self):
+        """Test if the HomeostasisDense dynamics are correctly implemented."""
+        update_rule = Homeostasis(1, 1, 1, tau=0.5, early_start=True, r_exp = 0.2, alpha=0.1)
+        pre = torch.FloatTensor([[[1, 0, 0, 0, 0, 0]]])
+        post = torch.FloatTensor([[[0, 1, 1, 1, 1, 1]]])
+        reward = torch.FloatTensor([0, 0, 0, 0, 0, 0])
+
+        weight = torch.Tensor([[-1]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(
+                weight,
+                pre[:, :, t],
+                post[:, :, t],
+                reward=reward[t])
+
+        assert weight.squeeze() < -1.0
+    
+    def test_homeostasis_dense_functional_upgrades_on_negative(self):
+        """Test if the HomeostasisDense dynamics are correctly implemented."""
+        update_rule = Homeostasis(1, 1, 1, tau=0.5, early_start=True, r_exp = 0.2, alpha=0.1)
+        pre = torch.FloatTensor([[[1, 0, 0, 0, 0, 0]]])
+        post = torch.FloatTensor([[[0, 0, 0, 1, 0, 0]]])
+        reward = torch.FloatTensor([0, 0, 0, 0, 0, 0])
+
+        weight = torch.Tensor([[-1]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(
+                weight,
+                pre[:, :, t],
+                post[:, :, t],
+                reward=reward[t])
+
+        assert weight.squeeze() > -1.0
+
+    def test_homeostasis_dense_functional_does_not_change_zero(self):
+        """Test if the HomeostasisDense dynamics are correctly implemented."""
+        update_rule = Homeostasis(1, 1, 1, tau=0.5, early_start=True, r_exp = 0.2, alpha=0.1)
+        pre = torch.FloatTensor([[[1, 0, 0, 0, 0, 0]]])
+        post = torch.FloatTensor([[[1, 0, 0, 0, 0, 0]]])
+        reward = torch.FloatTensor([0, 0, 0, 0, 0, 0])
+
+        weight = torch.Tensor([[0.0]])
+        for t in range(pre.shape[-1]):
+            weight = update_rule.update(
+                weight,
+                pre[:, :, t],
+                post[:, :, t],
+                reward=reward[t])
+
+        assert weight.squeeze() == 0.0
 
     def test_homeostasis_dense_functional_works_on_batch(self):
         """Test if the HomeostasisDense update rule works on batch."""
