@@ -11,10 +11,15 @@ class GenericSTDPLearningRule:
         self.W_min = W_min
 
     def update(self, weight, pre, post, **kwargs):
-        
+        kwargs['W_max'] = self.W_max
+        kwargs['W_min'] = self.W_min
+
+        weight_copy = weight.clone().detach()
+
         zero_mask = weight != 0
         sign = weight.sign()
 
+        
         w_change = self.F(weight, pre, post, **kwargs) * self.G(**kwargs)
 
         if self.H is not None:

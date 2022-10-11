@@ -32,6 +32,7 @@ class STDP_Functional:
             A_plus : float = 1,
             A_minus : float = 1,
             max_trace : float = -1.0,
+            use_weight_dependent : bool = False,
             **kwargs
     ):
         """
@@ -67,6 +68,8 @@ class STDP_Functional:
         self.pre_trace = torch.zeros((batch_size, in_neurons))
         self.post_trace = torch.zeros((batch_size, out_neurons))
 
+        self.use_weight_dependent = use_weight_dependent
+
     def __call__(
             self,
             weight : torch.Tensor,
@@ -101,6 +104,10 @@ class STDP_Functional:
             pre.unsqueeze(dim=1)
         ).sum(dim=0)
 
-        z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
+        if not self.use_weight_dependent:
+            z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
+        else:
+            z = self.A_plus * A_plus_mat * (kwargs['W_max'] - weight) / (kwargs['W_max'] - kwargs['W_min']) 
+            z -= self.A_minus * A_minus_mat * (weight - kwargs['W_min']) / (kwargs['W_max'] - kwargs['W_min'])
 
         return self.nu_zero * z

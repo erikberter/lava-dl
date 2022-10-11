@@ -99,8 +99,8 @@ class Homeostasis_Functional:
 
         w_weight = self.alpha * torch.abs(weight) * (1 - rate / self.r_exp)[:, None]
 
-        self.w_update_s += w_weight.sum()
-        self.w_change_s += w_change.sum()
+        self.w_update_s += w_weight.abs().sum()
+        self.w_change_s += w_change.abs().sum()
 
         w_weight = w_weight + w_change
 
