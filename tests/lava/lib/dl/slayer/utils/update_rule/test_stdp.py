@@ -155,7 +155,7 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
 
         assert torch.equal(weight, torch.FloatTensor([[0.0]]))
 
-    def test_linear_stdp_dense_functional_updates_correctly_on_antihebbian(self):
+    def test_linear_stdp_dense_functional_updates_correct_on_antihebbian(self):
         """Test if the STDP dynamics are correctly implemented."""
         F = STDP_Functional(1, 1, 1, nu_zero=1)
         update_rule = GenericSTDPLearningRule(F, Identity())
