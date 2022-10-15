@@ -19,7 +19,6 @@ class GenericSTDPLearningRule:
         zero_mask = weight != 0
         sign = weight.sign()
 
-        
         w_change = self.F(weight, pre, post, **kwargs) * self.G(**kwargs)
 
         if self.H is not None:

@@ -107,7 +107,8 @@ class STDP_Functional:
         if not self.use_weight_dependent:
             z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
         else:
-            z = self.A_plus * A_plus_mat * (kwargs['W_max'] - weight) / (kwargs['W_max'] - kwargs['W_min']) 
-            z -= self.A_minus * A_minus_mat * (weight - kwargs['W_min']) / (kwargs['W_max'] - kwargs['W_min'])
+            w_dif = kwargs['W_max'] - kwargs['W_min']
+            z = self.A_plus * A_plus_mat * (kwargs['W_max'] - weight) / dif
+            z -= self.A_minus * A_minus_mat * (weight - kwargs['W_min']) / dif
 
         return self.nu_zero * z

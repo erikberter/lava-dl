@@ -141,8 +141,6 @@ class TestLinearSTDPDenseFunctional(unittest.TestCase):
             weight,
             torch.FloatTensor([[1.0736, 0.0]]))
 
-
-
     def test_linear_stdp_dense_functional_does_not_change_sign(self):
         """Test if the STDP dynamics are correctly implemented."""
         F = STDP_Functional(1, 1, 1, nu_zero=1)
