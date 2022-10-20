@@ -2,7 +2,17 @@ import torch
 
 
 class GenericSTDPLearningRule:
-    def __init__(self, F, G, H=None, W_max=2.0, W_min=0.0, **kwargs):
+    def __init__(
+        self,
+        F,
+        G,
+        H=None,
+        W_max=2.0,
+        W_min=0.0,
+        weight_norm=None,
+        synaptogenesis=None,
+        **kwargs
+    ):
         self.F = F
         self.G = G
         self.H = H
@@ -10,7 +20,11 @@ class GenericSTDPLearningRule:
         self.W_max = W_max
         self.W_min = W_min
 
+        self.weight_norm = weight_norm
+        self.synaptogenesis = synaptogenesis
+
     def update(self, weight, pre, post, **kwargs):
+
         kwargs['W_max'] = self.W_max
         kwargs['W_min'] = self.W_min
 
@@ -32,6 +46,22 @@ class GenericSTDPLearningRule:
         weight = weight.clamp_(self.W_min, self.W_max)
         weight *= sign
 
+        if self.weight_norm is not None:
+            weight = torch.nn.functional.normalize(weight, p=1.0, dim=1)
+            weight *= self.weight_norm
+
+        if self.synaptogenesis is not None:
+            import random
+
+            if random.randint(0, 1000) == 0:
+                a = torch.zeros_like(weight).uniform_(0, 1) * 0.1
+
+                w_change = torch.bernoulli(a) * self.synaptogenesis
+
+                if random.randint(0, 10) < 3:
+                    w_change *= -1
+
+                weight += w_change
         return weight
 
     def __call__(self, weight, pre, post, **kwargs):

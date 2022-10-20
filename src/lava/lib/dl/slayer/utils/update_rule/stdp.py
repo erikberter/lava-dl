@@ -33,6 +33,7 @@ class STDP_Functional:
             A_minus : float = 1,
             max_trace : float = -1.0,
             use_weight_dependent : bool = False,
+            use_nearest_neightboor : bool = False,
             **kwargs
     ):
         """
@@ -53,6 +54,12 @@ class STDP_Functional:
         max_trace : float
             Defines the maximum value for the trace. If set to -1.0, then
             the trace will be unbounded.
+        use_weight_dependent : bool
+            True if the STDP will update weights based on a weight
+            dependence.
+        use_nearest_neightboor : bool
+            True if the synaptic trace will be uptated on a neares neightboor
+            based.
         """
 
         self.tau = tau
@@ -69,6 +76,7 @@ class STDP_Functional:
         self.post_trace = torch.zeros((batch_size, out_neurons))
 
         self.use_weight_dependent = use_weight_dependent
+        self.use_nearest_neightboor = use_nearest_neightboor
 
     def __call__(
             self,
@@ -81,18 +89,25 @@ class STDP_Functional:
         with GenericUpdateRule update function."""
 
         # Update synaptic trace
-        if self.max_trace == -1.0:
-            # Unbounded synaptic trace
-            self.pre_trace = self.tau * self.pre_trace + self.beta * pre
-            self.post_trace = self.tau * self.post_trace + self.beta * post
+        if self.use_nearest_neightboor:
+            self.pre_trace *= self.tau
+            self.post_trace *= self.tau
 
+            self.pre_trace = torch.max(self.beta * pre, self.pre_trace)
+            self.post_trace = torch.max(self.beta * post, self.post_trace)
         else:
-            # Bounded synaptic trace
-            pre_diff = self.beta * (self.max_trace - self.pre_trace) * pre
-            self.pre_trace = self.tau * self.pre_trace + pre_diff
+            if self.max_trace == -1.0:
+                # Unbounded synaptic trace
+                self.pre_trace = self.tau * self.pre_trace + self.beta * pre
+                self.post_trace = self.tau * self.post_trace + self.beta * post
 
-            post_diff = self.beta * (self.post_trace - self.pre_trace) * pre
-            self.post_trace = self.tau * self.post_trace + post_diff
+            else:
+                # Bounded synaptic trace
+                pre_diff = self.beta * (self.max_trace - self.pre_trace) * pre
+                self.pre_trace = self.tau * self.pre_trace + pre_diff
+
+                post_diff = self.beta * (self.post_trace - self.pre_trace) * pre
+                self.post_trace = self.tau * self.post_trace + post_diff
 
         A_plus_mat = torch.bmm(
             post.unsqueeze(dim=-1),
