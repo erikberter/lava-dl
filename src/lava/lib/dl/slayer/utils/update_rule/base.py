@@ -1,120 +1,68 @@
 import torch
-from abc import ABC
 
 
-class GenericUpdateRule(ABC):
-    """Abstract Update Rule class. Must be parent class of all update rules.
-        Contains the dynamics which all update rules share.
-
-        Attributes
-        ----------
-        weight_decay : float
-            rate of decrease in weights
-    """
-    def __init__(self, weight_decay : float = 1.0) -> None:
-
-        self.weight_decay = weight_decay
-
-    def update(self, weight : torch.Tensor, **kwargs) -> torch.Tensor:
-        """Updates the input weights.
-
-        Parameters
-        ----------
-        weight : torch.Tensor
-            Input weight of the layer
-
-        Returns
-        -------
-        torch.Tensor.
-            Updated weights.
-        """
-
-        weight *= self.weight_decay
-
-        return weight
-
-
-class DenseSynapticTraceUpdateRule(GenericUpdateRule):
-    """Abstract Update Rule class that implements synaptic trace
-    for dense layers.
-
-    This class should not be instanciated by itself.
-
-    Attributes
-    ----------
-    tau : float
-        Rate of decay of the synaptic trace.
-    beta : float
-        Change in the synaptic trace after each spike.
-    pre_trace : torch.Tensor
-        Synaptic trace of input spikes.
-    post_trace : torch.Tensor
-        Synaptic trace of output spikes.
-    max_trace : float
-        Defines the maximum value for the trace. If set to -1.0, then
-        the trace will be unbounded."""
-
+class GenericSTDPLearningRule:
     def __init__(
-            self,
-            in_neurons: int,
-            out_neurons: int,
-            batch_size : int,
-            tau : float,
-            beta : float,
-            max_trace : float = -1.0,
-            **kwargs):
-        """
-        Initialization of Synaptic Trace based update rule.
+        self,
+        F,
+        G,
+        H=None,
+        W_max=2.0,
+        W_min=0.0,
+        weight_norm=None,
+        synaptogenesis=None,
+        **kwargs
+    ):
+        self.F = F
+        self.G = G
+        self.H = H
 
-        Parameters
-        ----------
-        in_neurons : int
-            Number of input neurons
-        out_neurons : int
-            Number of output neurons
-        batch_size : int
-            Size of the batch
-        tau : float
-            Rate of decay of the synaptic trace.
-        beta : float
-            Change in the synaptic trace after each spike.
-        max_trace : float
-            Defines the maximum value for the trace. If set to -1.0, then
-            the trace will be unbounded.
-        """
-        super().__init__(**kwargs)
+        self.W_max = W_max
+        self.W_min = W_min
 
-        self.tau = tau
-        self.beta = beta
+        self.weight_norm = weight_norm
+        self.synaptogenesis = synaptogenesis
 
-        self.max_trace = max_trace
+    def update(self, weight, pre, post, **kwargs):
 
-        self.pre_trace = torch.zeros((batch_size, in_neurons))
-        self.post_trace = torch.zeros((batch_size, out_neurons))
+        kwargs['W_max'] = self.W_max
+        kwargs['W_min'] = self.W_min
 
-    def update(
-            self,
-            weight : torch.Tensor,
-            pre : torch.Tensor,
-            post : torch.Tensor,
-            **kwargs) -> torch.Tensor:
-        """Updates synaptic traces. Also updates weights
-        with GenericUpdateRule update function."""
+        weight_copy = weight.clone().detach()
 
-        weight = super().update(weight)
+        zero_mask = weight != 0
+        sign = weight.sign()
 
-        # Update synaptic trace
-        if self.max_trace == -1.0:
-            # Unbounded synaptic trace
-            self.pre_trace = self.tau * self.pre_trace + self.beta * pre
-            self.post_trace = self.tau * self.post_trace + self.beta * post
+        w_change = self.F(weight, pre, post, **kwargs) * self.G(**kwargs)
 
-        else:
-            # Bounded synaptic trace
-            pre_diff = self.beta * (self.max_trace - self.pre_trace) * pre
-            self.pre_trace = self.tau * self.pre_trace + pre_diff
+        if self.H is not None:
+            w_change += self.H(**kwargs)
 
-            post_diff = self.beta * (self.post_trace - self.pre_trace) * pre
-            self.post_trace = self.tau * self.post_trace + post_diff
+        w_change *= zero_mask
+        weight += w_change
 
+        # Signed Clamp
+        weight *= sign
+        weight = weight.clamp_(self.W_min, self.W_max)
+        weight *= sign
+
+        if self.weight_norm is not None:
+            weight = torch.nn.functional.normalize(weight, p=1.0, dim=1)
+            weight *= self.weight_norm
+
+        if self.synaptogenesis is not None:
+            import random
+
+            if random.randint(0, 1000) == 0:
+                a = torch.zeros_like(weight).uniform_(0, 1) * 0.1
+
+                w_change = torch.bernoulli(a) * self.synaptogenesis
+
+                if random.randint(0, 10) < 3:
+                    w_change *= -1
+
+                weight += w_change
         return weight
+
+    def __call__(self, weight, pre, post, **kwargs):
+        return self.update(weight, pre, post, **kwargs)

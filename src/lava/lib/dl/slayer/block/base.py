@@ -94,7 +94,7 @@ class AbstractInput(torch.nn.Module):
             if self.neuron is not None:
                 self.input_shape = self.neuron.shape
             else:
-                self.input_shape = input.shape[1:-1]
+                self.input_shape = x.shape[1:-1]
 
         if self.count_log is True:
             return x, torch.mean(x > 0)
@@ -1107,7 +1107,7 @@ class AbstractConvT(torch.nn.Module):
 
 
 class AbstractUnpool(torch.nn.Module):
-    """Abstract Unpool block class. This should never be instantiated on its own.
+    """Abstract Unpool block class. This should never be instantiated on its own
 
     Parameters
     ----------
@@ -1286,10 +1286,19 @@ class AbstractKWTA(torch.nn.Module):
         event rate is returned. Defaults to False.
     """
     def __init__(
-        self, neuron_params, in_neurons, out_neurons,
-        num_winners, update_rule=None, self_excitation=0.5,
-        weight_scale=1, weight_norm=False,
-        pre_hook_fx=None, delay_shift=True, requires_grad=True,
+        self,
+        neuron_params,
+        in_neurons,
+        out_neurons,
+        num_winners,
+        update_rule=None,
+        self_excitation=0.5,
+        sparsity=1,
+        weight_scale=1,
+        weight_norm=False,
+        pre_hook_fx=None,
+        delay_shift=True,
+        requires_grad=True,
         count_log=False
     ):
         super(AbstractKWTA, self).__init__()
@@ -1320,6 +1329,7 @@ class AbstractKWTA(torch.nn.Module):
 
         if update_rule is not None:
             self.synapse_params['update_rule'] = update_rule
+            self.synapse_params['sparsity'] = sparsity
 
         self.updatable = update_rule is not None
 
@@ -1341,14 +1351,7 @@ class AbstractKWTA(torch.nn.Module):
         """Forward computation method. The input can be either of ``NCT`` or
         ``NCHWT`` format.
         """
-        # s_\text{out}[t] = f_s\left(\mathbf{W}\,s_\text{in}[t]
-        #               + \mathbf{R}\,s_{out}[t-1] + \alpha\,(N-2K)\right)\\
-        # \mathbf{R} = \begin{bmatrix}
-        # a &-1 &\cdots &-1\\
-        # -1 & a &\cdots &-1\\
-        # \vdots &\vdots &\ddots &\vdots\\
-        # -1 &-1 &\cdots & a
-        # \end{bmatrix},\qquad |a| < 1
+
         if self.updatable:
             pre_copy = x.clone().detach()  # Needed for pre-post
 
@@ -1372,34 +1375,25 @@ class AbstractKWTA(torch.nn.Module):
             recurrent_bias = self.neuron.quantize_8bit(recurrent_bias)
 
         spike = torch.zeros(z.shape[:-1]).to(x.device)
-        if z.shape[0] == self.spike_state.shape[0]:
-            spike = spike + self.spike_state
 
         for time in range(z.shape[-1]):
-            dendrite = z[..., time:time + 1]
+            dendrite = z[..., time : time + 1]
 
-            dentrite += spike  # Add recurrent values
+            if dendrite.shape == self.spike_state.shape:
+                dendrite += self.spike_state  # Add recurrent values
 
-            dentrite += torch.rand(dentrite.shape) * 0.05
-            mask = dentrite == dentrite.max(dim=0)[0]
+            dendrite += torch.rand(dendrite.shape) * 0.005
+            mask = dendrite != dendrite.max(dim=1)[0]
 
-            dentrite = torch.where(dentrite == )
+            dendrite -= mask * dendrite
 
-            feedback = F.linear(
-                spike.reshape(x.shape[0], self.num_neurons),
-                recurrent_weight
-            ).reshape(dendrite.shape) + recurrent_bias  # or max psp
+            #  feedback = F.linear(
+            #    spike.reshape(x.shape[0], self.num_neurons),
+            #    recurrent_weight
+            #  ).reshape(dendrite.shape) + recurrent_bias  # or max psp
 
+            spike = self.neuron(dendrite)
 
-            print(f"El spike {spike}")
-            print(f"El spike_state {self.spike_state}")
-            print(f"El feedback {feedback}")
-            print(f"El dendrite {dendrite}")
-            print(f"El recurrent_weight {recurrent_weight}")
-            print(f"El recurrent_bias {recurrent_bias}")
-            spike = self.neuron(dendrite + feedback)
-            print(f"El dendrite + feedback {dendrite + feedback}")
-            print(f"El spike2 {spike}")
             x[..., time:time + 1] = spike
 
             if self.updatable:
@@ -1420,7 +1414,8 @@ class AbstractKWTA(torch.nn.Module):
 
                 self.synapse.apply_update_rule(**update_elements)
 
-        self.spike_state = 0.65 * spike.clone().detach().reshape(z.shape[:-1])
+        self.spike_state = 0 * spike.clone().detach().reshape(
+            z[..., time : time + 1].shape)
 
         if self.delay_shift is True:
             x = delay(x, 1)

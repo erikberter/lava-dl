@@ -218,11 +218,15 @@ class TestCUBA(unittest.TestCase):
         batch_size = 3
         time_steps = 7
 
-        from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+        import lava.lib.dl.slayer.utils.update_rule.base as base_dl
+        import lava.lib.dl.slayer.utils.update_rule.functional as F
 
-        class CustomUpdateRule(GenericUpdateRule):
+        class CustomUpdateRule(base_dl.GenericSTDPLearningRule):
             def __init__(self):
-                super(CustomUpdateRule, self).__init__()
+                super(CustomUpdateRule, self).__init__(
+                    F.Identity(),
+                    F.Identity()
+                )
 
             def update(self, weight, **kwargs):
                 return weight
@@ -251,11 +255,15 @@ class TestCUBA(unittest.TestCase):
         batch_size = 3
         time_steps = 1
 
-        from lava.lib.dl.slayer.utils.update_rule.base import GenericUpdateRule
+        import lava.lib.dl.slayer.utils.update_rule.base as base_dl
+        import lava.lib.dl.slayer.utils.update_rule.functional as F
 
-        class CustomUpdateRule(GenericUpdateRule):
+        class CustomUpdateRule(base_dl.GenericSTDPLearningRule):
             def __init__(self):
-                super(CustomUpdateRule, self).__init__()
+                super(CustomUpdateRule, self).__init__(
+                    F.Identity(),
+                    F.Identity()
+                )
 
             def update(self, weight, **kwargs):
                 if 'reward' not in kwargs:

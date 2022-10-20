@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from ..utils.update_rule.base import GenericUpdateRule
+from ..utils.update_rule.base import GenericSTDPLearningRule
 
 
 class GenericUpdatableLayer(torch.nn.Module):
@@ -185,7 +185,7 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
     def apply_update_rule(self, **kwargs) -> None:
         """Applies the update rule on the weight."""
 
-        if isinstance(self._update_rule, GenericUpdateRule):
+        if isinstance(self._update_rule, GenericSTDPLearningRule):
             self.weight = torch.nn.Parameter(
                 self._update_rule.update(self.weight, **kwargs),
                 requires_grad=False)
