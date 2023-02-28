@@ -132,6 +132,7 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         weight_norm=False,
         pre_hook_fx=None,
         sparsity=1.0,
+        inhib_ratio=0.2,
     ):
         """ """
 
@@ -155,7 +156,7 @@ class Dense(torch.nn.Linear, GenericUpdatableLayer):
         zero_mask = torch.rand(*self.weight.shape) < sparsity
 
         inhib_mask = torch.where(
-            torch.rand(*self.weight.shape) < 0.2, -1, 1)
+            torch.rand(*self.weight.shape) < inhib_ratio, -1, 1)
 
         self.weight = torch.nn.Parameter(
             inhib_mask * zero_mask * self.weight,

@@ -123,7 +123,7 @@ class STDP_Functional:
             z = self.A_plus * A_plus_mat - self.A_minus * A_minus_mat
         else:
             w_dif = kwargs['W_max'] - kwargs['W_min']
-            z = self.A_plus * A_plus_mat * (kwargs['W_max'] - weight) / dif
-            z -= self.A_minus * A_minus_mat * (weight - kwargs['W_min']) / dif
+            z = self.A_plus * A_plus_mat * (kwargs['W_max'] - weight) / w_dif
+            z -= self.A_minus * A_minus_mat * (weight - kwargs['W_min']) / w_dif
 
         return self.nu_zero * z

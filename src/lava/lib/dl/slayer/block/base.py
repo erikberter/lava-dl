@@ -1294,6 +1294,7 @@ class AbstractKWTA(torch.nn.Module):
         update_rule=None,
         self_excitation=0.5,
         sparsity=1,
+        inhib_ratio=0.2,
         weight_scale=1,
         weight_norm=False,
         pre_hook_fx=None,
@@ -1330,6 +1331,7 @@ class AbstractKWTA(torch.nn.Module):
         if update_rule is not None:
             self.synapse_params['update_rule'] = update_rule
             self.synapse_params['sparsity'] = sparsity
+            self.synapse_params['inhib_ratio'] = inhib_ratio
 
         self.updatable = update_rule is not None
 
@@ -1383,9 +1385,10 @@ class AbstractKWTA(torch.nn.Module):
                 dendrite += self.spike_state  # Add recurrent values
 
             dendrite += torch.rand(dendrite.shape) * 0.005
+
             mask = dendrite != dendrite.max(dim=1)[0]
 
-            dendrite -= mask * dendrite
+            dendrite -= mask * dendrite * 1.3
 
             #  feedback = F.linear(
             #    spike.reshape(x.shape[0], self.num_neurons),

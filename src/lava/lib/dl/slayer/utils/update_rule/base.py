@@ -11,6 +11,7 @@ class GenericSTDPLearningRule:
         W_min=0.0,
         weight_norm=None,
         synaptogenesis=None,
+        weight_decay=1.0,
         **kwargs
     ):
         self.F = F
@@ -19,6 +20,8 @@ class GenericSTDPLearningRule:
 
         self.W_max = W_max
         self.W_min = W_min
+
+        self.weight_decay = weight_decay
 
         self.weight_norm = weight_norm
         self.synaptogenesis = synaptogenesis
@@ -53,15 +56,17 @@ class GenericSTDPLearningRule:
         if self.synaptogenesis is not None:
             import random
 
-            if random.randint(0, 1000) == 0:
-                a = torch.zeros_like(weight).uniform_(0, 1) * 0.1
+            if random.randint(0, 300) == 0:
+                a = torch.zeros_like(weight).uniform_(0, 1) * 0.05
+
+                a *= ~zero_mask
 
                 w_change = torch.bernoulli(a) * self.synaptogenesis
 
-                if random.randint(0, 10) < 3:
-                    w_change *= -1
-
                 weight += w_change
+
+        weight = self.weight_decay * weight
+
         return weight
 
     def __call__(self, weight, pre, post, **kwargs):
