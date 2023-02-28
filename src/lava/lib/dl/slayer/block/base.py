@@ -94,7 +94,7 @@ class AbstractInput(torch.nn.Module):
             if self.neuron is not None:
                 self.input_shape = self.neuron.shape
             else:
-                self.input_shape = input.shape[1:-1]
+                self.input_shape = x.shape[1:-1]
 
         if self.count_log is True:
             return x, torch.mean(x > 0)
@@ -606,16 +606,17 @@ class AbstractDense(torch.nn.Module):
         def delay(d):
             return torch.floor(d.delay).flatten().cpu().data.numpy()
 
-        # dense descriptors
         handle.create_dataset(
             'type', (1, ), 'S10', ['dense'.encode('ascii', 'ignore')]
         )
+
         handle.create_dataset('shape', data=np.array(self.neuron.shape))
         handle.create_dataset('inFeatures', data=self.synapse.in_channels)
         handle.create_dataset('outFeatures', data=self.synapse.out_channels)
 
         if self.synapse.weight_norm_enabled:
             self.synapse.disable_weight_norm()
+
         if hasattr(self.synapse, 'imag'):   # complex synapse
             handle.create_dataset(
                 'weight/real',
