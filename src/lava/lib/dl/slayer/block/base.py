@@ -1295,6 +1295,7 @@ class AbstractKWTA(torch.nn.Module):
         self_excitation=0.5,
         sparsity=1,
         inhib_ratio=0.2,
+        kwta_decay=0.7,
         weight_scale=1,
         weight_norm=False,
         pre_hook_fx=None,
@@ -1332,6 +1333,7 @@ class AbstractKWTA(torch.nn.Module):
             self.synapse_params['update_rule'] = update_rule
             self.synapse_params['sparsity'] = sparsity
             self.synapse_params['inhib_ratio'] = inhib_ratio
+            self.kwta_decay = kwta_decay
 
         self.updatable = update_rule is not None
 
@@ -1378,24 +1380,37 @@ class AbstractKWTA(torch.nn.Module):
 
         spike = torch.zeros(z.shape[:-1]).to(x.device)
 
+        if self.updatable:
+            if not hasattr(self, 'temp_pos'):
+                self.dendrite = torch.zeros(z.shape[:-1]).to(x.device)
+                self.dendrite = self.dendrite.unsqueeze(-1)
+
         for time in range(z.shape[-1]):
-            dendrite = z[..., time : time + 1]
+            self.dendrite *= self.kwta_decay
+            self.dendrite += z[..., time : time + 1]
 
-            if dendrite.shape == self.spike_state.shape:
-                dendrite += self.spike_state  # Add recurrent values
+            if self.dendrite.shape == self.spike_state.shape:
+                self.dendrite += self.spike_state  # Add recurrent values
 
-            dendrite += torch.rand(dendrite.shape) * 0.005
+            self.dendrite += torch.rand(self.dendrite.shape) * 0.005
 
-            mask = dendrite != dendrite.max(dim=1)[0]
+            mask = self.dendrite != self.dendrite.max(dim=1)[0]
 
-            dendrite -= mask * dendrite * 1.3
+            spike = self.neuron(self.dendrite - mask * self.dendrite)
+            
+            # If more than one spike, select the one with the highest current value
+            if spike.sum() > 1:
+                spike *= 0
+                spike[:, self.dendrite.max(dim=1)[1]] = 1
+            
+            # If Spike, delete the rest of the current_state
+            if spike.sum() > 0:
+                if len(self.neuron.current_state.shape) != 1:
+                    self.neuron.current_state *= 1 - mask.int()[..., 0]
 
-            #  feedback = F.linear(
-            #    spike.reshape(x.shape[0], self.num_neurons),
-            #    recurrent_weight
-            #  ).reshape(dendrite.shape) + recurrent_bias  # or max psp
-
-            spike = self.neuron(dendrite)
+            self.dendrite *= 0
+            self.dendrite -= mask * 0.1
+            # self.dendrite -= (1 - mask) * self.dendrite
 
             x[..., time:time + 1] = spike
 

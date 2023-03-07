@@ -8,6 +8,7 @@ import torch
 from . import base
 from ..neuron import alif
 from ..synapse import layer as synapse
+from ..synapse import updatable as updatable_synapse
 from ..axon import Delay
 
 
@@ -74,6 +75,7 @@ TimeDecimation.__doc__ = _doc_from_base(base.AbstractTimeDecimation)
 class Dense(AbstractALIF, base.AbstractDense):
     def __init__(self, *args, **kwargs):
         super(Dense, self).__init__(*args, **kwargs)
+        print([self.synapse_params])
         self.synapse = synapse.Dense(**self.synapse_params)
         if 'pre_hook_fx' not in kwargs.keys():
             self.synapse.pre_hook_fx = self.neuron.quantize_8bit
@@ -81,6 +83,18 @@ class Dense(AbstractALIF, base.AbstractDense):
 
 
 Dense.__doc__ = _doc_from_base(base.AbstractDense)
+
+
+class UpdatableDense(AbstractALIF, base.AbstractDense):
+    def __init__(self, *args, **kwargs):
+        super(UpdatableDense, self).__init__(*args, **kwargs)
+        self.synapse = updatable_synapse.Dense(**self.synapse_params)
+        if 'pre_hook_fx' not in kwargs.keys():
+            self.synapse.pre_hook_fx = self.neuron.quantize_8bit
+        del self.synapse_params
+
+
+UpdatableDense.__doc__ = _doc_from_base(base.AbstractDense)
 
 
 class Conv(AbstractALIF, base.AbstractConv):
@@ -142,6 +156,17 @@ class KWTA(AbstractALIF, base.AbstractKWTA):
 
 KWTA.__doc__ = _doc_from_base(base.AbstractKWTA)
 
+
+class UpdatableKWTA(AbstractALIF, base.AbstractKWTA):
+    def __init__(self, *args, **kwargs):
+        super(UpdatableKWTA, self).__init__(*args, **kwargs)
+        self.synapse = updatable_synapse.Dense(**self.synapse_params)
+        if 'pre_hook_fx' not in kwargs.keys():
+            self.synapse.pre_hook_fx = self.neuron.quantize_8bit
+        del self.synapse_params
+
+
+UpdatableKWTA.__doc__ = _doc_from_base(base.AbstractKWTA)
 
 class Recurrent(AbstractALIF, base.AbstractRecurrent):
     def __init__(self, *args, **kwargs):
