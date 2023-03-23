@@ -48,6 +48,48 @@ class StreamingMovingAverage:
         return self.early_start or self.i >= self.window_size
 
 
+class StreamingExponentialMovingAverage:
+    def __init__(
+        self,
+        n_out,
+        window_size,
+        early_start=False,
+        min_val : float = 0.1,
+        alpha : float = 0.995
+    ):
+        self.window_size = window_size
+        self.values = torch.zeros((n_out))
+        self.early_start = early_start
+        self.i = 0
+
+        self.alpha = alpha
+        self.min_val = min_val
+
+    def __call__(self, value):
+        if self.i < self.window_size:
+            # Shape (batch, n_out) -> (n_out)
+            b_value = torch.mean(value, dim=0).clone().detach().squeeze()
+            self.values = self.alpha * self.values + (1 - self.alpha) * b_value
+
+            self.i += 1
+        else:
+            # Shape (batch, n_out) -> (n_out)
+            b_value = torch.mean(value, dim=0).clone().detach().squeeze()
+
+            self.values = self.alpha * self.values + (1 - self.alpha) * b_value
+
+        return self.get_rate()
+
+    def get_rate(self):
+        return torch.maximum(
+            self.values,
+            self.min_val * torch.ones_like(self.values)
+        )
+
+    def rate_available(self):
+        return self.early_start or self.i >= self.window_size
+
+
 class Homeostasis_Functional:
     """
     Based on Biologically Plausible Models of
@@ -66,6 +108,8 @@ class Homeostasis_Functional:
         window_size : int = 50,
         early_start : bool = False,
         min_val : float = 0.1,
+        factor_free : bool = False,
+        mean_type : str = "sma",
         **kwargs
     ):
         self.alpha = alpha
@@ -73,14 +117,22 @@ class Homeostasis_Functional:
         self.r_exp = r_exp
         self.T = T
 
+        self.factor_free = factor_free
+
         self.w_change_s = 0.0
         self.w_update_s = 0.0
-
-        self.sma = StreamingMovingAverage(
-            n_out=out_neurons,
-            window_size=window_size,
-            early_start=early_start,
-            min_val=min_val)
+        if mean_type == "sma":
+            self.sma = StreamingMovingAverage(
+                n_out=out_neurons,
+                window_size=window_size,
+                early_start=early_start,
+                min_val=min_val)
+        elif mean_type == "ema":
+            self.sma = StreamingExponentialMovingAverage(
+                n_out=out_neurons,
+                window_size=window_size,
+                early_start=early_start,
+                min_val=min_val)
 
     def __call__(
         self,
@@ -104,6 +156,9 @@ class Homeostasis_Functional:
         self.w_change_s += w_change.abs().sum()
 
         w_weight = w_weight + w_change
+
+        if self.factor_free:
+            return w_weight
 
         denominator = 1 + torch.abs(1 - rate / self.r_exp) * self.gamma
         # denominator *= self.T  I think this variable is not needed
