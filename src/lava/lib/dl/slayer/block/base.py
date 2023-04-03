@@ -491,7 +491,7 @@ class AbstractDense(torch.nn.Module):
         delay=False,
         delay_shift=True,
         mask=None,
-        count_log=False,
+        count_log=False
     ):
         super(AbstractDense, self).__init__()
         # neuron parameters
@@ -551,7 +551,14 @@ class AbstractDense(torch.nn.Module):
 
             res = []
             for t in range(x.shape[-1]):
-                z = self.synapse(x[:, :, t])
+                if 'target' in kwargs:
+                    if kwargs['target'] is not None:
+                        z = self.synapse(x[:, :, t]) + kwargs['target']
+                    else:
+                        z = self.synapse(x[:, :, t])
+                else:
+                    z = self.synapse(x[:, :, t])
+
                 out = self.neuron(z)
 
                 # Apply a fake 1 delay.
@@ -1359,89 +1366,83 @@ class AbstractKWTA(torch.nn.Module):
         if self.updatable:
             pre_copy = x.clone().detach()  # Needed for pre-post
 
-        if self.bias is None:
-            z = self.synapse(x)
-        else:
-            z = self.synapse(x) + self.bias
-        x = torch.zeros_like(z).to(x.device)
-
         self.clamp()
-        recurrent_weight = (
-            (1 + self.self_excitation)
-            * torch.eye(self.num_neurons).to(x.device) - 1
-        )
-        recurrent_bias = self.neuron.threshold * (
-            self.num_neurons - 2 * self.num_winners
-        ) / self.num_neurons / self.neuron.w_scale
-        recurrent_bias = torch.FloatTensor([recurrent_bias]).to(x.device)
-        if self.neuron.quantize_8bit is not None:
-            recurrent_weight = self.neuron.quantize_8bit(recurrent_weight)
-            recurrent_bias = self.neuron.quantize_8bit(recurrent_bias)
-
-        spike = torch.zeros(z.shape[:-1]).to(x.device)
 
         if self.updatable:
-            if not hasattr(self, 'temp_pos'):
-                self.dendrite = torch.zeros(z.shape[:-1]).to(x.device)
-                self.dendrite = self.dendrite.unsqueeze(-1)
+            for time in range(x.shape[-1]):
+                if 'target' in kwargs:
+                    if kwargs['target'] is not None:
+                        z = self.synapse(x[:, :, time]) + kwargs['target']
+                    else:
+                        z = self.synapse(x[:, :, time])
+                else:
+                    z = self.synapse(x[:, :, time])
 
-        for time in range(z.shape[-1]):
-            self.dendrite *= self.kwta_decay
-            self.dendrite += z[..., time : time + 1]
+                if self.bias is not None:
+                    z += self.bias
 
-            if self.dendrite.shape == self.spike_state.shape:
-                self.dendrite += self.spike_state  # Add recurrent values
+                spike = torch.zeros(z.shape[:-1]).to(x.device)
 
-            self.dendrite += torch.rand(self.dendrite.shape) * 0.005
-
-            mask = self.dendrite != self.dendrite.max(dim=1)[0]
-
-            spike = self.neuron(self.dendrite - mask * self.dendrite)
-            
-            # If more than one spike, select the one with the highest current value
-            if spike.sum() > 1:
-                spike *= 0
-                spike[:, self.dendrite.max(dim=1)[1]] = 1
-            
-            # If Spike, delete the rest of the current_state
-            if spike.sum() > 0:
-                if len(self.neuron.current_state.shape) != 1:
-                    self.neuron.current_state *= 1 - mask.int()[..., 0]
-
-            self.dendrite *= 0
-            self.dendrite -= mask * 0.1
-            # self.dendrite -= (1 - mask) * self.dendrite
-
-            x[..., time:time + 1] = spike
-
-            if self.updatable:
                 if not hasattr(self, 'temp_pos'):
-                    self.temp_pos = torch.zeros_like(spike)
+                    self.dendrite = torch.zeros(z.shape[:-1]).to(x.device)
+                    self.dendrite = self.dendrite.unsqueeze(-1)
+                
+                self.dendrite *= self.kwta_decay
+                self.dendrite += z[..., time : time + 1]
 
-                # Update the weights
-                update_elements = {
-                    'pre'   : pre_copy[:, :, time],
-                    'post'  : self.temp_pos.clone().detach().squeeze(2),
-                    # [N,C,T(1)] -> [N,C]
-                }
+                if self.dendrite.shape == self.spike_state.shape:
+                    self.dendrite += self.spike_state  # Add recurrent values
 
-                self.temp_pos = spike.clone().detach()
+                self.dendrite += torch.rand(self.dendrite.shape) * 0.005
 
-                # To bypass lava implementation, send info through kwargs
-                update_elements.update(kwargs)
+                mask = self.dendrite != self.dendrite.max(dim=1)[0]
 
-                self.synapse.apply_update_rule(**update_elements)
+                spike = self.neuron(self.dendrite - mask * self.dendrite)
+
+                # If more than one spike, select the one with the highest current value
+                if spike.sum() > 1:
+                    spike *= 0
+                    spike[:, self.dendrite.max(dim=1)[1]] = 1
+
+                # If Spike, delete the rest of the current_state
+                if spike.sum() > 0:
+                    if len(self.neuron.current_state.shape) != 1:
+                        self.neuron.current_state *= 1 - mask.int()[..., 0]
+
+                self.dendrite *= 0
+                self.dendrite -= mask * 0.1
+                # self.dendrite -= (1 - mask) * self.dendrite
+
+                z[..., time:time + 1] = spike
+
+                if self.updatable:
+                    if not hasattr(self, 'temp_pos'):
+                        self.temp_pos = torch.zeros_like(spike)
+
+                    # Update the weights
+                    update_elements = {
+                        'pre'   : pre_copy[:, :, time],
+                        'post'  : self.temp_pos.clone().detach().squeeze(2),
+                        # [N,C,T(1)] -> [N,C]
+                    }
+
+                    self.temp_pos = spike.clone().detach()
+
+                    # To bypass lava implementation, send info through kwargs
+                    update_elements.update(kwargs)
+
+                    self.synapse.apply_update_rule(**update_elements)
 
         self.spike_state = 0 * spike.clone().detach().reshape(
             z[..., time : time + 1].shape)
 
         if self.delay_shift is True:
-            x = delay(x, 1)
+            z = delay(z, 1)
 
         if self.count_log is True:
-            return x, torch.mean(x > 0)
+            return z, torch.mean(z > 0)
         else:
-            return x
+            return z
 
     @property
     def shape(self):
